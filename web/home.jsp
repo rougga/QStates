@@ -1,3 +1,4 @@
+<%@page import="java.util.Map"%>
 <%@page import="javax.swing.text.TabExpander"%>
 <%@page import="java.util.ArrayList"%>
 <%@page import="java.util.List"%>
@@ -30,106 +31,55 @@
             <div>
                 <%@include file="./addon/navbar.jsp" %>
             </div>
-            <%                    String err = "", data = "[", lable = "[";
-                String data2 = "[", labels2 = "[";
-                long wait = 0;
-                long goal = 0;
-                String waitPer = "0";
-                String goalPer = "0";
+            <%                    
+                String err = "", data , lable ;
+                float waitPer = 100;
+                float goalPer = 0;
                 String waitCss = "bg-success";
                 String goalCss = "bg-danger";
                 String waitClass = "is-valid";
                 String goalClass = "is-invalid";
                 CfgHandler cfg = new CfgHandler(request);
-                try {
-                    PgConnection con = new PgConnection();
-
-                    ResultSet biz_tik = con.getStatement().executeQuery("select count(*) as wait from t_ticket where status=0 and to_date(to_char(ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')=TO_DATE('" + new TableGenerator().getFormat().format(new Date()) + "','YYYY-MM-DD')");
-                    if (biz_tik.next()) {
-                        wait = biz_tik.getLong("wait");
-                        float per;
-                        if(Objects.equals(cfg.getPropertie("maxA"), "0")) {
-                            per=(float)100; 
-                        }
-                        else{ 
-                           per = ((float) goal / Long.parseLong(cfg.getPropertie("maxA"))) * 100;
-                        }
-                        if (per >= 100) {
-                            waitPer = "100";
-                            waitCss = "bg-danger";
-                            waitClass = "is-invalid";
-                        } else {
-                            if (per > 70) {
-                                waitCss = "bg-danger";
-                                waitClass = "is-invalid";
-                            } else if (per > 50) {
-                                waitCss = "bg-warning";
-                                waitClass = "is-invalid";
-                            }
-                            waitPer = Math.floor(per) + "";
-                        }
-
-                    } else {
-                        wait = 0;
-
-                    }
-                    biz_tik = con.getStatement().executeQuery("select count(*) as wait from t_ticket where status=4 and to_date(to_char(ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')=TO_DATE('" + new TableGenerator().getFormat().format(new Date()) + "','YYYY-MM-DD')");
-                    if (biz_tik.next()) {
-                        goal = biz_tik.getLong("wait");
-                        float per;
-                        if(Objects.equals(cfg.getPropertie("goalT"), "0")) {
-                            per=(float)100; 
-                        }
-                        else{ 
-                           per = ((float) goal / Long.parseLong(cfg.getPropertie("goalT"))) * 100;
-                        }
-                        if (per >= 100) {
-                            goalPer = "100";
-                            goalCss = "bg-success";
-                            goalClass = "is-valid";
-                        } else {
-                            if (per > 70) {
-                                goalCss = "bg-success";
-                                goalClass = "is-valid";
-                            } else if (per > 50) {
-                                goalCss = "bg-warning";
-                                goalClass = "is-valid";
-                            }
-                            goalPer = Math.floor(per) + "";
-                        }
-                    } else {
-                        goal = 0;
-                    }
-                    List<ArrayList<String>> table = new TableGenerator().generateGblTable(request, null, null, session.getAttribute("db")+"");
-                    for(int i =0; i< table.size()-1;i++){
-                        lable+="'"+table.get(i).get(0)+"',";
-                        data+=table.get(i).get(2)+",";
-                    }
-                    if(lable.lastIndexOf(",")>=0){
-                        lable=lable.substring(0, lable.lastIndexOf(","));
-                    }
-                    if(data.lastIndexOf(",")>=0){
-                        data=data.substring(0, data.lastIndexOf(","));
-                    }
-                    lable+="]";
-                    data+="]";
-                    con.closeConnection();
-                } catch (ClassNotFoundException e) {
-                    err = e.toString();
-
+                Stats stat= new Stats();
+                long cWait = stat.getWaitingTicket(null,null);
+                long cGoal = stat.getDealTicket(null, null);
+                long oWait = Long.parseLong(cfg.getPropertie("maxA"));
+                long oGoal = Long.parseLong(cfg.getPropertie("goalT"));
+                if(cWait!=0){
+                    waitPer = (((float)cWait/oWait)*100) ;
                 }
-                Stats stat = new Stats();
+                if(waitPer>85){
+                     waitCss = "bg-danger";
+                     waitClass = "is-invalid";
+                }else if(waitPer>60){
+                    waitCss = "bg-warning";
+                     waitClass = "is-valid";
+                }
+                if(cGoal!=0){
+                    goalPer = (((float)cGoal/oGoal)*100);
+                }
+                if(goalPer>85){
+                     waitCss = "bg-success";
+                     waitClass = "is-valid";
+                }else if(goalPer>60){
+                    waitCss = "bg-warning";
+                     waitClass = "is-invalid";
+                }
+                Map d = stat.getDealTicketByServiceChart(null, null, response);
+                lable=d.get("lable").toString();
+                data=d.get("data").toString();
+
             %>
             <div class="d-flex justify-content-center  justify-content-md-between flex-md-row flex-column align-items-start">
                 <div class="col-12 col-md-6">
                     <div class="mt-4  mb-md-5">
-                        <h3 class="text-white">Ticket en attente <span class="badge badge-pill appColor"><%= wait + " / " + cfg.getPropertie("maxA")%></span>:
+                        <h3 class="text-white">Ticket en attente <%= waitPer %> <span class="badge badge-pill appColor"><%= cWait + " / " + oWait%></span>:
                         <div class='spinner-grow text-white' role='status'>
                                 <span class='sr-only'>Chargement...</span>
                             </div>
                         </h3>
                         <div class="progress" style="height: 40px;">
-                            <div class="progress-bar <%= waitCss%> font-weight-bold progress-bar-striped progress-bar-animated " role="progressbar" style="width: <%= waitPer%>%" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"><%= wait + " / " + cfg.getPropertie("maxA")%></div>
+                            <div class="progress-bar <%= waitCss%> font-weight-bold progress-bar-striped progress-bar-animated " role="progressbar" style="width: <%= waitPer%>%" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"><%= cWait + " / " + oWait%></div>
                         </div>
                     </div>
                     <div class="border border-white rounded p-2">
@@ -172,13 +122,13 @@
                 <div class="col-12 col-md-6 ">
 
                     <div class="mt-4 mb-md-5">
-                        <h3 class="text-white">Totale de ticket Traité <span class="badge badge-pill appColor"><%= goal + " / " + cfg.getPropertie("goalT")%></span>:
+                        <h3 class="text-white">Totale de ticket Traité <span class="badge badge-pill appColor"><%= cGoal + " / " + oGoal%></span>:
                             <div class='spinner-grow text-white' role='status'>
                                 <span class='sr-only'>Chargement...</span>
                             </div>
                         </h3>
                         <div class="progress " style="height: 40px;">
-                            <div class="progress-bar <%= goalCss%> font-weight-bold  progress-bar-striped progress-bar-animated"" role="progressbar" style="width: <%= goalPer%>%" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"> <%= goal + " / " + cfg.getPropertie("goalT")%></div>
+                            <div class="progress-bar <%= goalCss%> font-weight-bold  progress-bar-striped progress-bar-animated"" role="progressbar" style="width: <%= goalPer%>%" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"> <%= cGoal + " / " + oGoal%></div>
                         </div>
                     </div>
                     <form class="text-white border border-white rounded" >
@@ -264,6 +214,12 @@
 
         <script>
             var timer = setTimeout(function () {window.location = window.location.href;}, 60000);
+            $(document).ready(function () {
+                var d = <%= waitPer %>;
+                if (d >=80){
+                    alert("le pourcentage d'attente est supérieur à 80% !!!");
+                }
+            });
         </script>
     </body>
 </html>

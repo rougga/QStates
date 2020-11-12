@@ -8,7 +8,9 @@ import java.text.SimpleDateFormat;
 import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import javax.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpRequest;
@@ -234,7 +236,7 @@ public class Stats {
         }
     }
 
-    public List getWaitingTicketsByService(String d1, String d2,HttpServletResponse res) throws IOException {
+    public List getWaitingTicketsByService(String d1, String d2, HttpServletResponse res) throws IOException {
         List<ArrayList> table = new ArrayList<>();
         try {
             setDate1(d1);
@@ -250,22 +252,20 @@ public class Stats {
             s.setString(2, getDate2());
             ResultSet r = s.executeQuery();
             con.closeConnection();
-            while(r.next()){
+            while (r.next()) {
                 ArrayList row = new ArrayList();
                 row.add(r.getString("name"));
                 row.add(r.getLong("nb_t"));
                 table.add(row);
             }
-            
-            
-            
-        } catch(Exception e){
-            res.sendRedirect("./home.jsp?err="+URLEncoder.encode(e.getMessage(), "UTF-8"));
+
+        } catch (Exception e) {
+            res.sendRedirect("./home.jsp?err=" + URLEncoder.encode(e.getMessage(), "UTF-8"));
         }
         return table;
     }
-    
-     public List getDealTicketsByService(String d1, String d2,HttpServletResponse res) throws IOException {
+
+    public List getDealTicketsByService(String d1, String d2, HttpServletResponse res) throws IOException {
         List<ArrayList> table = new ArrayList<>();
         try {
             setDate1(d1);
@@ -281,21 +281,38 @@ public class Stats {
             s.setString(2, getDate2());
             ResultSet r = s.executeQuery();
             con.closeConnection();
-            while(r.next()){
+            while (r.next()) {
                 ArrayList row = new ArrayList();
                 row.add(r.getString("name"));
                 row.add(r.getLong("nb_t"));
                 table.add(row);
             }
-            
-            
-            
-        } catch(Exception e){
-            res.sendRedirect("./home.jsp?err="+URLEncoder.encode(e.getMessage(), "UTF-8"));
+        } catch (Exception e) {
+            res.sendRedirect("./home.jsp?err=" + URLEncoder.encode(e.getMessage(), "UTF-8"));
         }
         return table;
     }
-    
+
+    public Map getDealTicketByServiceChart(String d1, String d2, HttpServletResponse res) throws IOException {
+        Map map = new HashMap();
+        List<ArrayList> table = getDealTicketsByService(d1, d2, res);
+        String lable="[",data="[";
+        for (int i = 0; i < table.size(); i++) {
+            lable += "'" + table.get(i).get(0) + "',";
+            data += table.get(i).get(1) + ",";
+        }
+        if (lable.lastIndexOf(",") >= 0) {
+            lable = lable.substring(0, lable.lastIndexOf(","));
+        }
+        if (data.lastIndexOf(",") >= 0) {
+            data = data.substring(0, data.lastIndexOf(","));
+        }
+        lable += "]";
+        data += "]";
+        map.put("lable", lable);
+        map.put("data", data);
+        return map;
+    }
 
     public void setDate1(String date1) {
         if (Objects.equals(date1, null)) {
