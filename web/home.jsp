@@ -45,7 +45,7 @@
                 long cGoal = stat.getDealTicket(null, null);
                 long oWait = Long.parseLong(cfg.getPropertie("maxA"));
                 long oGoal = Long.parseLong(cfg.getPropertie("goalT"));
-                if(cWait!=0){
+                if(oWait!=0){
                     waitPer = (((float)cWait/oWait)*100) ;
                 }
                 if(waitPer>85){
@@ -73,7 +73,7 @@
             <div class="d-flex justify-content-center  justify-content-md-between flex-md-row flex-column align-items-start">
                 <div class="col-12 col-md-6">
                     <div class="mt-4  mb-md-5">
-                        <h3 class="text-white">Ticket en attente <%= waitPer %> <span class="badge badge-pill appColor"><%= cWait + " / " + oWait%></span>:
+                        <h3 class="text-white">Ticket en attente <span class="badge badge-pill appColor"><%= cWait + " / " + oWait%></span>:
                         <div class='spinner-grow text-white' role='status'>
                                 <span class='sr-only'>Chargement...</span>
                             </div>
