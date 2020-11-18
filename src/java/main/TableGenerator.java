@@ -2094,7 +2094,7 @@ public class TableGenerator {
                 break;
             case "gla":
                 T = generateGlaTable(request, request.getParameter("date1"), request.getParameter("date2"), request.getSession().getAttribute("db") + "");
-                setTitle("Grille d&#39;attente");
+                setTitle("Grille d attente");
                 setCols(getGlaCols());
                 setType(type);
                 setChartHTML("true");
