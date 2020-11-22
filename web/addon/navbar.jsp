@@ -5,7 +5,7 @@
     }
 %>
 <nav class="navbar navbar-expand-lg navbar-dark " style="background-color: #b83dba;">
-    <a class="navbar-brand" href="#">OffReport</a>
+    <a class="navbar-brand" href="#">QStates</a>
 
     <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#collapsibleNavbar">
         <span class="navbar-toggler-icon"></span>

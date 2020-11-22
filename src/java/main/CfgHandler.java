@@ -44,9 +44,9 @@ public class CfgHandler {
     public CfgHandler(HttpServletRequest r) throws FileNotFoundException, IOException {
         this.request = r;
         url = request.getServletContext().getRealPath(File.separator);
-        appPath = url.substring(0, url.indexOf("OffReport") + 9);
-        
-        appPath="C:\\Users\\bouga\\Desktop\\ProjectsCurrent\\OffReport\\web";
+        appPath = url.substring(0, url.indexOf("QStates") + 7);
+
+        //appPath = "C:\\Users\\bouga\\Desktop\\ProjectsCurrent\\OffReport\\web";
     }
 
     public String getPropertie(String name) throws IOException {
@@ -84,7 +84,7 @@ public class CfgHandler {
     public int getCibleA(String id) throws FileNotFoundException, IOException, ParserConfigurationException, SAXException {
 
         int cibleA = 0;
-        String path= getCibleFile();
+        String path = getCibleFile();
         Document doc = getXml(path);
         Node cibles = doc.getFirstChild();
         NodeList nList = cibles.getChildNodes();
@@ -102,9 +102,9 @@ public class CfgHandler {
     }
 
     public int getCibleT(String id) throws FileNotFoundException, IOException, ParserConfigurationException, SAXException {
-        
+
         int cibleT = 0;
-        String path= getCibleFile();
+        String path = getCibleFile();
         Document doc = getXml(path);
         Node cibles = doc.getFirstChild();
         NodeList nList = cibles.getChildNodes();
@@ -132,8 +132,9 @@ public class CfgHandler {
     public String getTempxls() {
         return tempxls;
     }
+
     public String getCfgFile() {
-        return appPath+cfgFile;
+        return appPath + cfgFile;
     }
 
     public String getUserFile() {
@@ -147,7 +148,8 @@ public class CfgHandler {
     public String getExtraFile() {
         return appPath + extraFile;
     }
-     public String getGblTempExcel() {
+
+    public String getGblTempExcel() {
         return appPath + gblTempExcel;
     }
 
@@ -182,6 +184,5 @@ public class CfgHandler {
     public String getAplTempExcel() {
         return appPath + aplTempExcel;
     }
-
 
 }
