@@ -8,7 +8,7 @@
 <%@page contentType="text/html" pageEncoding="UTF-8"%>
 <%
     if (!Objects.equals(session.getAttribute("grade"), "adm")) {
-        response.sendRedirect("./home.jsp");
+       // response.sendRedirect("./home.jsp");
     }
 %>
 <%!

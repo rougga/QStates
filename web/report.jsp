@@ -55,7 +55,6 @@
                     $("#home").removeClass("active");
                     $(".<%=type%>").addClass("active");
                 </script>
-                <%=type%>
             </div>
             <div class="body">
                 <%                     if (request.getParameter("err") != "" && request.getParameter("err") != null) {

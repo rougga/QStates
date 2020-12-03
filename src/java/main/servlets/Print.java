@@ -78,95 +78,95 @@ public class Print extends HttpServlet {
 
                     }//EMP PDF
                 }//GCHSER
-                
-                if (Objects.equals(type,"ndt")) {
+
+                if (Objects.equals(type, "ndt")) {
                     if (Objects.equals(format, "excel")) {
                         if (new Export().exportNdtExcel(response, request, date1, date2) == null) {
-                           response.sendRedirect("./report.jsp?type="+type+"&err=erreur%20dans%20impression");
+                            response.sendRedirect("./report.jsp?type=" + type + "&err=erreur%20dans%20impression");
                         }
                     }//NDT XL
 
                     if (Objects.equals(format, "pdf")) {
 
                     }//NDT PDF
-                    
+
                 }//NDT
-                
-                if (Objects.equals(type,"ndtt")) {
+
+                if (Objects.equals(type, "ndtt")) {
                     if (Objects.equals(format, "excel")) {
                         if (new Export().exportNdttExcel(response, request, date1, date2) == null) {
-                           response.sendRedirect("./report.jsp?type="+type+"&err=erreur%20dans%20impression");
+                            response.sendRedirect("./report.jsp?type=" + type + "&err=erreur%20dans%20impression");
                         }
                     }//NDTT XL
 
                     if (Objects.equals(format, "pdf")) {
 
                     }//NDTT PDF
-                    
+
                 }//NDTT
-                
-                if (Objects.equals(type,"ndta")) {
+
+                if (Objects.equals(type, "ndta")) {
                     if (Objects.equals(format, "excel")) {
                         if (new Export().exportNdtaExcel(response, request, date1, date2) == null) {
-                           response.sendRedirect("./report.jsp?type="+type+"&err=erreur%20dans%20impression");
+                            response.sendRedirect("./report.jsp?type=" + type + "&err=erreur%20dans%20impression");
                         }
                     }//NDTA XL
 
                     if (Objects.equals(format, "pdf")) {
 
                     }//NDTA PDF
-                    
+
                 }//NDTA
-                if (Objects.equals(type,"ndtsa")) {
+                if (Objects.equals(type, "ndtsa")) {
                     if (Objects.equals(format, "excel")) {
                         if (new Export().exportNdtsaExcel(response, request, date1, date2) == null) {
-                           response.sendRedirect("./report.jsp?type="+type+"&err=erreur%20dans%20impression");
+                            response.sendRedirect("./report.jsp?type=" + type + "&err=erreur%20dans%20impression");
                         }
                     }//NDTSA XL
 
                     if (Objects.equals(format, "pdf")) {
 
                     }//NDTSA PDF
-                    
+
                 }//NDTSA
-                if (Objects.equals(type,"gla")) {
+                if (Objects.equals(type, "gla")) {
                     if (Objects.equals(format, "excel")) {
                         if (new Export().exportGlaExcel(response, request, date1, date2) == null) {
-                           response.sendRedirect("./report.jsp?type="+type+"&err=erreur%20dans%20impression");
+                            response.sendRedirect("./report.jsp?type=" + type + "&err=erreur%20dans%20impression");
                         }
                     }//NDTSA XL
 
                     if (Objects.equals(format, "pdf")) {
 
                     }//NDTSA PDF
-                    
+
                 }//GLA
-                
-                if (Objects.equals(type,"glt")) {
+
+                if (Objects.equals(type, "glt")) {
                     if (Objects.equals(format, "excel")) {
                         if (new Export().exportGltExcel(response, request, date1, date2) == null) {
-                           response.sendRedirect("./report.jsp?type="+type+"&err=erreur%20dans%20impression");
+                            response.sendRedirect("./report.jsp?type=" + type + "&err=erreur%20dans%20impression");
                         }
                     }//NDTSA XL
 
                     if (Objects.equals(format, "pdf")) {
 
                     }//NDTSA PDF
-                    
+
                 }//GLT
-                if (Objects.equals(type,"apl")) {
+                if (Objects.equals(type, "apl")) {
                     if (Objects.equals(format, "excel")) {
                         if (new Export().exportAplExcel(response, request, date1, date2) == null) {
-                           response.sendRedirect("./report.jsp?type="+type+"&err=erreur%20dans%20impression");
+                            //response.sendRedirect("./report.jsp?type=" + type + "&err=erreur%20dans%20impression");
                         }
                     }//APL XL
 
                     if (Objects.equals(format, "pdf")) {
 
                     }//APL PDF
-                    
+
                 }//APL
-                response.sendRedirect("./report.jsp?type="+type+"&err=Type%20inconnue");
+                // response.sendRedirect("./report.jsp?type="+type+"&err=Type%20inconnue");
             }
         } catch (Exception e) {
             response.sendRedirect("./report.jsp?err=" + e.getMessage());

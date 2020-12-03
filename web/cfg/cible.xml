@@ -10,4 +10,11 @@
         <cibleT>60</cibleT>
         <dcible>20</dcible>
     </service>
-<service><id>a3f3ea1c52224201b303bef39df1060c</id><name>Reclamation</name><cibleA>40</cibleA><cibleT>40</cibleT><dcible>20</dcible></service></cibles>
+    <service>
+        <id>a3f3ea1c52224201b303bef39df1060c</id>
+        <name>Reclamation</name>
+        <cibleA>40</cibleA>
+        <cibleT>40</cibleT>
+        <dcible>20</dcible>
+    </service>
+</cibles>
