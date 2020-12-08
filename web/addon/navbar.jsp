@@ -62,8 +62,7 @@
                 </a>
                 <div class="dropdown-menu" aria-labelledby="superV" >
                     <a class="dropdown-item  font-weight-bold navHover" href="./fj.jsp">Flash journée</a>
-                    <a class="dropdown-item  font-weight-bold navHover" href="./report.jsp?type=sgch">Employés</a>
-                    <a class="dropdown-item  font-weight-bold navHover" href="./report.jsp?type=sgch">Guichets</a>
+                    <a class="dropdown-item  font-weight-bold navHover" href="./report.jsp?type=sgch">Guichets - Employés</a>
                     <a class="dropdown-item  font-weight-bold navHover" href="./report.jsp?type=ser">Services</a>
                 </div>
             </li>  

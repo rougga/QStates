@@ -46,7 +46,7 @@ public class CfgHandler {
         url = request.getServletContext().getRealPath(File.separator);
         appPath = url.substring(0, url.indexOf("QStates") + 7);
 
-       // appPath = "C:\\Users\\bouga\\Desktop\\ProjectsCurrent\\OffReport\\web";
+        appPath = "C:\\Users\\bouga\\Desktop\\ProjectsCurrent\\OffReport\\web";
     }
 
     public String getPropertie(String name) throws IOException {
