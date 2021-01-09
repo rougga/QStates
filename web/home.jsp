@@ -27,7 +27,7 @@
         <link href="./css/navbar.css" rel="stylesheet" type="text/css"/>
     </head>
     <body>
-        <div class="container-lg">
+        <div class="container-lg p-0">
             <div>
                 <%@include file="./addon/navbar.jsp" %>
             </div>

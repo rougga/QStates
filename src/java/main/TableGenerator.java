@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import javax.servlet.http.HttpServletRequest;
 import javax.xml.parsers.ParserConfigurationException;
+import main.handler.TitleHandler;
 import org.xml.sax.SAXException;
 
 public class TableGenerator {
@@ -251,7 +252,7 @@ public class TableGenerator {
         r = con.getStatement().executeQuery(subTotalSQL);
         while (r.next()) {
             ArrayList<String> row = new ArrayList<>();
-            row.add("Sous-Total");
+            row.add("Sous-Totale");
             row.add(r.getLong("nb_t") + "");
             row.add(r.getLong("nb_tt") + "");
             row.add(r.getLong("nb_a") + "");
@@ -403,7 +404,7 @@ public class TableGenerator {
         r = con.getStatement().executeQuery(subTotalSQL);
         while (r.next()) {
             ArrayList<String> row = new ArrayList<>();
-            row.add("Sous-Total");
+            row.add("Sous-Totale");
             row.add(r.getLong("nb_t") + "");
             row.add(r.getLong("nb_tt") + "");
             row.add(r.getLong("nb_a") + "");
@@ -573,8 +574,8 @@ public class TableGenerator {
         r = con.getStatement().executeQuery(subTotalSQL);
         while (r.next()) {
             ArrayList<String> row = new ArrayList<>();
-            row.add("Sous-Total");
-            row.add("Sous-Total");
+            row.add("Sous-Totale");
+            row.add("Sous-Totale");
             row.add(r.getLong("nb_t") + "");
             row.add(r.getLong("nb_tt") + "");
             row.add(r.getLong("nb_a") + "");
@@ -727,7 +728,7 @@ public class TableGenerator {
         r = con.getStatement().executeQuery(subTotalSQL);
         while (r.next()) {
             ArrayList<String> row = new ArrayList<>();
-            row.add("Sous-Total");
+            row.add("Sous-Totale");
             row.add(r.getLong("nb_t") + "");
             row.add(r.getLong("nb_tt") + "");
             row.add(r.getLong("nb_a") + "");
@@ -912,8 +913,8 @@ public class TableGenerator {
         r = con.getStatement().executeQuery(subTotalSQL);
         while (r.next()) {
             ArrayList<String> row = new ArrayList<>();
-            row.add("Sous-Total");
-            row.add("Sous-Total");
+            row.add("Sous-Totale");
+            row.add("Sous-Totale");
             row.add(r.getLong("nb_t") + "");
             row.add(r.getLong("nb_tt") + "");
             row.add(r.getLong("nb_a") + "");
@@ -1859,7 +1860,7 @@ public class TableGenerator {
 
         while (r.next()) {
             ArrayList row = new ArrayList();
-            row.add("Total");
+            row.add("Totale");
             row.add(r.getLong("s0_15") + "");
             row.add(r.getLong("s15_30") + "");
             row.add(r.getLong("s30_60") + "");
@@ -1955,7 +1956,7 @@ public class TableGenerator {
         r = con.getStatement().executeQuery(subSQL);
         while (r.next()) {
             ArrayList row = new ArrayList();
-            row.add("Total");
+            row.add("Totale");
             row.add(r.getLong("s0_15") + "");
             row.add(r.getLong("s15_30") + "");
             row.add(r.getLong("s30_60") + "");
@@ -1986,129 +1987,131 @@ public class TableGenerator {
     }
 
     public Map getTable(HttpServletRequest request, String d1, String d2, String db, String type) throws IOException, ClassNotFoundException, FileNotFoundException, ParserConfigurationException, SAXException, Exception {
+       
         type = (type == null) ? "gbl" : type.toLowerCase().trim();
         Map data = new HashMap();
         List<ArrayList<String>> T;
+        TitleHandler th = new TitleHandler(request);
         switch (type) {
             case "gbl":
-                T = generateGblTable(request, request.getParameter("date1"), request.getParameter("date2"), request.getSession().getAttribute("db") + "");
-                setTitle("Rapport Globale");
+                T = generateGblTable(request, request.getParameter("date1"), request.getParameter("date2"), String.valueOf(request.getSession().getAttribute("db")));
+                setTitle(th.getGblTitle());
                 setCols(getGblCols());
                 setType(type);
                 setDefaultHTML();
                 break;
             case "emp":
-                T = generateEmpTable(request, request.getParameter("date1"), request.getParameter("date2"), request.getSession().getAttribute("db") + "");
-                setTitle("Rapport Employé");
+                T = generateEmpTable(request, request.getParameter("date1"), request.getParameter("date2"),String.valueOf(request.getSession().getAttribute("db")));
+                setTitle(th.getEmpTitle());
                 setCols(getEmpCols());
                 setType(type);
                 setDefaultHTML();
                 break;
             case "empser":
-                T = generateEmpServiceTable(request, request.getParameter("date1"), request.getParameter("date2"), request.getSession().getAttribute("db") + "");
-                setTitle("Rapport Employé par service");
+                T = generateEmpServiceTable(request, request.getParameter("date1"), request.getParameter("date2"),String.valueOf(request.getSession().getAttribute("db")));
+                setTitle(th.getEmpSerTitle());
                 setCols(getEmpServiceCols());
                 setType(type);
                 setDefaultHTML();
                 break;
             case "gch":
-                T = generateGchTable(request, request.getParameter("date1"), request.getParameter("date2"), request.getSession().getAttribute("db") + "");
-                setTitle("Rapport Guichet");
+                T = generateGchTable(request, request.getParameter("date1"), request.getParameter("date2"),String.valueOf(request.getSession().getAttribute("db")));
+                setTitle(th.getGchTitle());
                 setCols(getGchCols());
                 setType(type);
                 setDefaultHTML();
                 break;
             case "gchserv":
-                T = generateGchServiceTable(request, request.getParameter("date1"), request.getParameter("date2"), request.getSession().getAttribute("db") + "");
-                setTitle("Rapport Guichet par service");
+                T = generateGchServiceTable(request, request.getParameter("date1"), request.getParameter("date2"),String.valueOf(request.getSession().getAttribute("db")));
+                setTitle(th.getGchServTitle());
                 setCols(getGchServiceCols());
                 setType(type);
                 setDefaultHTML();
                 break;
             case "ndt":
-                generateNdtChart(request, request.getParameter("date1"), request.getParameter("date2"), request.getSession().getAttribute("db") + "");
-                T = generateNdtTable(request, request.getParameter("date1"), request.getParameter("date2"), request.getSession().getAttribute("db") + "");
-                setTitle("Nombre de tickets edités");
+                generateNdtChart(request, request.getParameter("date1"), request.getParameter("date2"),String.valueOf(request.getSession().getAttribute("db")));
+                T = generateNdtTable(request, request.getParameter("date1"), request.getParameter("date2"),String.valueOf(request.getSession().getAttribute("db")));
+                setTitle(th.getNdtTitle());
                 setCols(getNdtCols());
                 setType(type);
                 setChartHTML("false");
                 break;
             case "ndtt":
-                generateNdttChart(request, request.getParameter("date1"), request.getParameter("date2"), request.getSession().getAttribute("db") + "");
-                T = generateNdttTable(request, request.getParameter("date1"), request.getParameter("date2"), request.getSession().getAttribute("db") + "");
-                setTitle("Nombre de tickets traités");
+                generateNdttChart(request, request.getParameter("date1"), request.getParameter("date2"),String.valueOf(request.getSession().getAttribute("db")));
+                T = generateNdttTable(request, request.getParameter("date1"), request.getParameter("date2"),String.valueOf(request.getSession().getAttribute("db")));
+                setTitle(th.getNdttTitle());
                 setCols(getNdtCols());
                 setType(type);
                 setChartHTML("false");
                 break;
             case "ndta":
-                generateNdtaChart(request, request.getParameter("date1"), request.getParameter("date2"), request.getSession().getAttribute("db") + "");
-                T = generateNdtaTable(request, request.getParameter("date1"), request.getParameter("date2"), request.getSession().getAttribute("db") + "");
-                setTitle("Nombre de tickets absents");
+                generateNdtaChart(request, request.getParameter("date1"), request.getParameter("date2"),String.valueOf(request.getSession().getAttribute("db")));
+                T = generateNdtaTable(request, request.getParameter("date1"), request.getParameter("date2"),String.valueOf(request.getSession().getAttribute("db")));
+                setTitle(th.getNdtaTitle());
                 setCols(getNdtCols());
                 setType(type);
                 setChartHTML("false");
                 break;
             case "ndtsa":
-                generateNdtsaChart(request, request.getParameter("date1"), request.getParameter("date2"), request.getSession().getAttribute("db") + "");
-                T = generateNdtsaTable(request, request.getParameter("date1"), request.getParameter("date2"), request.getSession().getAttribute("db") + "");
-                setTitle("Nombre de tickets sans affectation");
+                generateNdtsaChart(request, request.getParameter("date1"), request.getParameter("date2"),String.valueOf(request.getSession().getAttribute("db")));
+                T = generateNdtsaTable(request, request.getParameter("date1"), request.getParameter("date2"),String.valueOf(request.getSession().getAttribute("db")));
+                setTitle(th.getNdtsaTitle());
                 setCols(getNdtCols());
                 setType(type);
                 setChartHTML("false");
                 break;
             case "cnx":
-                T = generateCnxTable(request, request.getParameter("date1"), request.getParameter("date2"), request.getSession().getAttribute("db") + "");
-                setTitle("Connexions");
+                T = generateCnxTable(request, request.getParameter("date1"), request.getParameter("date2"),String.valueOf(request.getSession().getAttribute("db")));
+                setTitle(th.getCnxTitle());
                 setCols(getCnxCols());
                 setType(type);
-                setEmptyHTML();
+                setDateHTML();
                 break;
             case "remp":
-                T = generateEmpTable(request, request.getParameter("date1"), request.getParameter("date2"), request.getSession().getAttribute("db") + "");
-                setTitle("Rendement Employés");
+                T = generateEmpTable(request, request.getParameter("date1"), request.getParameter("date2"),String.valueOf(request.getSession().getAttribute("db")));
+                setTitle(th.getRempTitle());
                 setCols(getEmpCols());
                 setType(type);
-                setEmptyHTML();
+                setDateHTML();
                 break;
             case "ser":
-                T = generateSerTable(request, request.getParameter("date1"), request.getParameter("date2"), request.getSession().getAttribute("db") + "");
-                setTitle("Supervision: Service");
+                T = generateSerTable(request, request.getParameter("date1"), request.getParameter("date2"),String.valueOf(request.getSession().getAttribute("db")));
+                setTitle(th.getSerTitle());
                 setCols(getSerCols());
                 setType(type);
                 setTimerHTML();
                 break;
             case "sgch":
-                T = generateSgchTable(request, request.getParameter("date1"), request.getParameter("date2"), request.getSession().getAttribute("db") + "");
-                setTitle("Supervision: Guichet");
+                T = generateSgchTable(request, request.getParameter("date1"), request.getParameter("date2"),String.valueOf(request.getSession().getAttribute("db")));
+                setTitle(th.getSgchTitle());
                 setCols(getSgchCols());
                 setType(type);
                 setTimerHTML();
                 break;
             case "apl":
-                T = generateAplTable(request, request.getParameter("date1"), request.getParameter("date2"), request.getSession().getAttribute("db") + "");
-                setTitle("Détail des appels");
+                T = generateAplTable(request, request.getParameter("date1"), request.getParameter("date2"),String.valueOf(request.getSession().getAttribute("db")));
+                setTitle(th.getAplTitle());
                 setCols(getAplCols());
                 setType(type);
-                setDefaultHTML();
+                setDateHTML();
                 break;
             case "gla":
-                T = generateGlaTable(request, request.getParameter("date1"), request.getParameter("date2"), request.getSession().getAttribute("db") + "");
-                setTitle("Grille d attente");
+                T = generateGlaTable(request, request.getParameter("date1"), request.getParameter("date2"),String.valueOf(request.getSession().getAttribute("db")));
+                setTitle(th.getGlaTitle());
                 setCols(getGlaCols());
                 setType(type);
                 setChartHTML("true");
                 break;
             case "glt":
-                T = generateGltTable(request, request.getParameter("date1"), request.getParameter("date2"), request.getSession().getAttribute("db") + "");
-                setTitle("Grille de traitement");
+                T = generateGltTable(request, request.getParameter("date1"), request.getParameter("date2"),String.valueOf(request.getSession().getAttribute("db")));
+                setTitle(th.getGltTitle());
                 setCols(getGltCols());
                 setType(type);
                 setChartHTML("true");
                 break;
             default:
-                T = generateGblTable(request, request.getParameter("date1"), request.getParameter("date2"), request.getSession().getAttribute("db") + "");
-                setTitle("Rapport Globale");
+                T = generateGblTable(request, request.getParameter("date1"), request.getParameter("date2"),String.valueOf(request.getSession().getAttribute("db")));
+                setTitle(th.getGblTitle());
                 setCols(getGblCols());
                 setType(type);
                 setDefaultHTML();
@@ -2341,11 +2344,43 @@ public class TableGenerator {
                 + "<input type='hidden' class='form-control'  id='format' name='format' value='excel'>"
                 + "</div>"
                 + "<button type='button' class='btn btn-success m-2' id='excel'><img src='./img/icon/excel.png'/> Excel</button>"
-                + "<button type='button' class='btn btn-danger m-2' id='pdf' disabled><img src='./img/icon/pdf.png'/> PDF</button>"
+                + "<button type='button' class='btn btn-danger m-2' id='pdf'><img src='./img/icon/pdf.png'/> PDF</button>"
                 + "</form>"
                 + "</div>";
     }
 
+    public void setDateHTML() {
+        this.topHTML = "<div class='div-wrapper d-flex justify-content-center align-items-center'>"
+                + "<form class='form-inline'>"
+                + "<label class='m-1' for='date1'>Du: </label>"
+                + "<input type='date' class='form-control mb-2 mr-sm-2' id='date1' name='date1' value='" + getDate1() + "' max='" + format.format(new Date()) + "'>"
+                + "<label class='m-1' for='date2'>Au: </label>"
+                + "<input type='date' class='form-control mb-2 mr-sm-2' id='date2' name='date2' value='" + getDate2() + "' >"
+                + "<input type='hidden' value='" + getType() + "' name='type'>"
+                + "<div class='btn-group dropright mb-2 mr-2'>"
+                + "  <button type='button' class='btn btn-secondary dropdown-toggle' data-toggle='dropdown' aria-haspopup='true' aria-expanded='false'>"
+                + "    Intervalle"
+                + "  </button>"
+                + "  <div class='dropdown-menu '>"
+                + "    <a class='dropdown-item font-weight-bold appHover' href='#' id='today'>Aujourd'hui</a>"
+                + "    <a class='dropdown-item font-weight-bold appHover' href='#' id='yesterday'>Hier</a>"
+                + "    <a class='dropdown-item font-weight-bold appHover' href='#' id='cWeek'>Semaine en cours</a>"
+                + "    <a class='dropdown-item font-weight-bold appHover' href='#' id='lWeek'>Dernier semaine</a>"
+                + "    <a class='dropdown-item font-weight-bold appHover' href='#' id='cMonth'>Mois en cours</a>"
+                + "    <a class='dropdown-item font-weight-bold appHover' href='#' id='lMonth'>Mois dernier</a>"
+                + "    <a class='dropdown-item font-weight-bold appHover' href='#' id='cYear'>Année en cours</a>"
+                + "    <a class='dropdown-item font-weight-bold appHover' href='#' id='lYear'>Année dernier</a>"
+                + "  </div>"
+                + "</div>"
+                + "<button type='submit' class='btn btn-primary mb-2'><img src='./img/icon/reload.png'/> Actualiser</button>"
+                + "</form>"
+                + "<script>"
+                + "</script>"
+                + "</div>";
+        this.bottomHTML = "";
+    }
+
+    
     public void setEmptyHTML() {
         this.topHTML = "<div class='div-wrapper d-flex justify-content-center align-items-center'>"
                 + "</div>";
@@ -2379,7 +2414,7 @@ public class TableGenerator {
                 + "<button type='submit' class='btn btn-primary mb-2 '><img src='./img/icon/reload.png'/> Actualiser</button>"
                 + "</form>"
                 + "<div class='col-12 col-md-3 col-lg-4'>"
-                + "<button type='button' class='btn btn-danger mb-2 ml-2 float-right' id='pdf' disabled><img src='./img/icon/pdf.png'/> PDF</button>"
+                + "<button type='button' class='btn btn-danger mb-2 ml-2 float-right' id='pdf'><img src='./img/icon/pdf.png'/> PDF</button>"
                 + "<button type='button' class='btn btn-success mb-2 ml-2 float-right ' id='excel'><img src='./img/icon/excel.png'/> Excel</button>"
                 + "</div>"
                 + "</div>";
@@ -2398,7 +2433,7 @@ public class TableGenerator {
                 + "<input type='hidden' class=''  id='format' name='format' value='excel'>"
                 + "</div>"
                 + "<!--<button type='button' class='btn btn-success m-2' id='excel'><img src='./img/icon/excel.png'/> Excel</button>"
-                + "<button type='button' class='btn btn-danger m-2' id='pdf' disabled><img src='./img/icon/pdf.png'/> PDF</button>-->"
+                + "<button type='button' class='btn btn-danger m-2' id='pdf' ><img src='./img/icon/pdf.png'/> PDF</button>-->"
                 + "</form>"
                 + "</div>"
                 + ""
@@ -2410,7 +2445,7 @@ public class TableGenerator {
                 + "                    var myChart = echarts.init(document.getElementById('graphs'));"
                 + "                    var option = {"
                 + "                        title: {"
-                + "                            text: '" + getTitle() + " De " + format2.format(format.parse(date1)) + " Au " + format2.format(format.parse(date2)) + "'"
+                + "                            text: '" + getTitle().replace("'", "\\'") + " De " + format2.format(format.parse(date1)) + " Au " + format2.format(format.parse(date2)) + "'"
                 + "                        },"
                 + "                        tooltip: {"
                 + "                            trigger: 'axis'"

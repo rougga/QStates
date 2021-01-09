@@ -8,7 +8,7 @@
 <%@page contentType="text/html" pageEncoding="UTF-8"%>
 <%
     if (!Objects.equals(session.getAttribute("grade"), "adm")) {
-       // response.sendRedirect("./home.jsp");
+        response.sendRedirect("./home.jsp");
     }
 %>
 <%!
@@ -50,7 +50,7 @@
         </style>
     </head>
     <body>
-        <div class="container-lg">
+        <div class="container-lg p-0">
             <div class="head">
                 <%@include file="./addon/navbar.jsp" %>
                 <script>
@@ -129,7 +129,7 @@
                         Utilisateurs : 
                         <span class="  float-right">
                             <a class="btn btn-success" id="userAdd" data-toggle="modal" data-target="#userModal"><img src="./img/icon/plus.png"> Ajouter</a>
-                            <a class="btn btn-info disabled" id="userEdit"><img src="./img/icon/pencil.png"> Editer</a>
+                           <!-- <a class="btn btn-info disabled" id="userEdit"><img src="./img/icon/pencil.png"> Editer</a>-->
                             <a class="btn btn-danger" id="userDlt" href="#"><img src="./img/icon/trash.png"> Supprimer</a>
                         </span>
                     </h1>
@@ -176,7 +176,7 @@
                         Extra : 
                         <span class="  float-right">
                             <a class="btn btn-success" id="extraAdd" data-toggle="modal" data-target="#extraModal"><img src="./img/icon/plus.png"> Ajouter</a>
-                            <a class="btn btn-info disabled" id="extraEdit"><img src="./img/icon/pencil.png"> Editer</a>
+                            <!--<a class="btn btn-info disabled" id="extraEdit"><img src="./img/icon/pencil.png"> Editer</a>-->
                             <a class="btn btn-danger" id="extraDlt" href="#"><img src="./img/icon/trash.png"> Supprimer</a>
                         </span>
                     </h1>

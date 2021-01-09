@@ -19,34 +19,37 @@ import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
 public class CfgHandler {
-
-    private Properties prop = null;
+    
+    //MetaData
+    static final String APP = "QStates";
+    static final String VERSION = "1.5";
+    static final String COMPANY = "ROUGGA";
+    
+    //Data files
     private final String cfgFile = "\\cfg\\cfg.properties";
-    private final String userFile = "\\cfg\\users.xml";
-    private final String cibleFile = "\\cfg\\cible.xml";
-    private final String extraFile = "\\cfg\\extra.xml";
-    private final String tempxls = "\\cfg\\temp.xls";
-    private final String gblTempExcel = "\\cfg\\gbltemp.xlsx";
-    private final String empTempExcel = "\\cfg\\emptemp.xlsx";
-    private final String empServTempExcel = "\\cfg\\empservtemp.xlsx";
-    private final String GchTempExcel = "\\cfg\\gchtemp.xlsx";
-    private final String GchservTempExcel = "\\cfg\\gchservtemp.xlsx";
-    private final String ndtTempExcel = "\\cfg\\ndttemp.xlsx";
-    private final String glaTempExcel = "\\cfg\\glatemp.xlsx";
-    private final String gltTempExcel = "\\cfg\\glttemp.xlsx";
-    private final String aplTempExcel = "\\cfg\\apltemp.xlsx";
-    private String url;
-    private String appPath;
+    private final String userFile = "\\cfg\\db\\users.xml";
+    private final String cibleFile = "\\cfg\\db\\cible.xml";
+    private final String extraFile = "\\cfg\\db\\extra.xml";
+    private final String titleFile = "\\cfg\\db\\title.xml";
+    //excel
+    
+    private final String gblTempExcel = "\\cfg\\excel\\gbltemp.xlsx";
+    private final String empTempExcel = "\\cfg\\excel\\emptemp.xlsx";
+    private final String empServTempExcel = "\\cfg\\excel\\empservtemp.xlsx";
+    private final String GchTempExcel = "\\cfg\\excel\\gchtemp.xlsx";
+    private final String GchservTempExcel = "\\cfg\\excel\\gchservtemp.xlsx";
+    private final String ndtTempExcel = "\\cfg\\excel\\ndttemp.xlsx";
+    private final String glaTempExcel = "\\cfg\\excel\\glatemp.xlsx";
+    private final String gltTempExcel = "\\cfg\\excel\\glttemp.xlsx";
+    private final String aplTempExcel = "\\cfg\\excel\\apltemp.xlsx";
+    
+    
     private HttpServletRequest request;
-    private OutputStream output;
     private FileReader FR = null;
+    private Properties prop = null;
 
     public CfgHandler(HttpServletRequest r) throws FileNotFoundException, IOException {
         this.request = r;
-        url = request.getServletContext().getRealPath(File.separator);
-        appPath = url.substring(0, url.indexOf("QStates") + 7);
-
-        appPath = "C:\\Users\\bouga\\Desktop\\ProjectsCurrent\\OffReport\\web";
     }
 
     public String getPropertie(String name) throws IOException {
@@ -121,68 +124,60 @@ public class CfgHandler {
         return cibleT;
     }
 
-    public String getUrl() {
-        return url;
-    }
-
-    public String getAppPath() {
-        return appPath;
-    }
-
-    public String getTempxls() {
-        return tempxls;
-    }
-
     public String getCfgFile() {
-        return appPath + cfgFile;
+        return request.getServletContext().getRealPath(cfgFile);
     }
 
     public String getUserFile() {
-        return appPath + userFile;
+        return request.getServletContext().getRealPath(userFile);
     }
 
     public String getCibleFile() {
-        return appPath + cibleFile;
+        return request.getServletContext().getRealPath(cibleFile);
     }
 
     public String getExtraFile() {
-        return appPath + extraFile;
+        return request.getServletContext().getRealPath(extraFile);
     }
 
     public String getGblTempExcel() {
-        return appPath + gblTempExcel;
+        return request.getServletContext().getRealPath(gblTempExcel) ;
     }
 
     public String getEmpTempExcel() {
-        return appPath + empTempExcel;
+        return request.getServletContext().getRealPath(empTempExcel);
     }
 
     public String getGchTempExcel() {
-        return appPath + GchTempExcel;
+        return request.getServletContext().getRealPath(GchTempExcel);
     }
 
     public String getEmpServTempExcel() {
-        return appPath + empServTempExcel;
+        return request.getServletContext().getRealPath(empServTempExcel);
     }
 
     public String getGchServTempExcel() {
-        return appPath + GchservTempExcel;
+        return request.getServletContext().getRealPath(GchservTempExcel);
     }
 
     public String getNdtTempExcel() {
-        return appPath + ndtTempExcel;
+        return request.getServletContext().getRealPath(ndtTempExcel);
     }
 
     public String getGlaTempExcel() {
-        return appPath + glaTempExcel;
+        return request.getServletContext().getRealPath(glaTempExcel);
     }
 
     public String getGltTempExcel() {
-        return appPath + gltTempExcel;
+        return request.getServletContext().getRealPath(gltTempExcel);
     }
 
     public String getAplTempExcel() {
-        return appPath + aplTempExcel;
+        return request.getServletContext().getRealPath(aplTempExcel);
+    }
+
+    public String getTitleFile() {
+        return request.getServletContext().getRealPath(titleFile);
     }
 
 }

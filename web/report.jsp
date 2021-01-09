@@ -47,7 +47,7 @@
         <script src="js/echarts-en.min.js"></script>
     </head>
     <body>
-        <div class="container-xl">
+        <div class="container-xl p-0">
 
             <div class="head">
                 <%@include file="./addon/navbar.jsp" %>

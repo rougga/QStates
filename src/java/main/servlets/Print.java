@@ -24,149 +24,159 @@ public class Print extends HttpServlet {
                 String date2 = request.getParameter("date2").trim();
                 if (Objects.equals(type, "gbl")) {
                     if (Objects.equals(format, "excel")) {
-                        if (new Export().exportGblExcel(response, request, date1, date2) == null) {
-                            response.sendRedirect("./report.jsp?err=Table%20vide");
+                        if (new Export().exportGblExcel(response, request, date1, date2) == 0) {
+                            response.sendRedirect("./report.jsp?type=" + type + "&date1=" + date1 + "&date2=" + date2 + "&err=erreur%20dans%20impression");
                         }
                     }//GBL XL
-
-                    if (Objects.equals(format, "pdf")) {
-
+                    else if (Objects.equals(format, "pdf")) {
+                        if (new Export().exportGblPDF(response, request, date1, date2) == 0) {
+                            response.sendRedirect("./report.jsp?type=" + type + "&date1=" + date1 + "&date2=" + date2 + "&err=erreur%20dans%20impression");
+                        }
                     }//GBL PDF
                 }//GBL
-
-                if (Objects.equals(type, "emp")) {
+                else if (Objects.equals(type, "emp")) {
                     if (Objects.equals(format, "excel")) {
                         if (new Export().exportEmpExcel(response, request, date1, date2) == null) {
-                            response.sendRedirect("./report.jsp?err=Table%20vide");
+                            response.sendRedirect("./report.jsp?type=" + type + "&date1=" + date1 + "&date2=" + date2 + "&err=erreur%20dans%20impression");
                         }
                     }//EMP XL
-
-                    if (Objects.equals(format, "pdf")) {
-
+                    else if (Objects.equals(format, "pdf")) {
+                        if (new Export().exportEmpPDF(response, request, date1, date2) == 0) {
+                            response.sendRedirect("./report.jsp?type=" + type + "&date1=" + date1 + "&date2=" + date2 + "&err=erreur%20dans%20impression");
+                        }
                     }//EMP PDF
                 }//EMP
-                if (Objects.equals(type, "empser")) {
+                else if (Objects.equals(type, "empser")) {
                     if (Objects.equals(format, "excel")) {
                         if (new Export().exportEmpServiceExcel(response, request, date1, date2) == null) {
-                            response.sendRedirect("./report.jsp?err=Table%20vide");
+                            response.sendRedirect("./report.jsp?type=" + type + "&date1=" + date1 + "&date2=" + date2 + "&err=erreur%20dans%20impression");
                         }
                     }//EMP XL
-
-                    if (Objects.equals(format, "pdf")) {
-
+                    else if (Objects.equals(format, "pdf")) {
+                        if (new Export().exportEmpServicePDF(response, request, date1, date2) == 0) {
+                            response.sendRedirect("./report.jsp?type=" + type + "&date1=" + date1 + "&date2=" + date2 + "&err=erreur%20dans%20impression");
+                        }
                     }//EMP PDF
                 }//EMPSER
-                if (Objects.equals(type, "gch")) {
+                else if (Objects.equals(type, "gch")) {
                     if (Objects.equals(format, "excel")) {
                         if (new Export().exportGchExcel(response, request, date1, date2) == null) {
-                            response.sendRedirect("./report.jsp?err=Table%20vide");
+                            response.sendRedirect("./report.jsp?type=" + type + "&date1=" + date1 + "&date2=" + date2 + "&err=erreur%20dans%20impression");
                         }
                     }//GCH XL
-
-                    if (Objects.equals(format, "pdf")) {
-
+                    else if (Objects.equals(format, "pdf")) {
+                        if (new Export().exportGchPDF(response, request, date1, date2) == 0) {
+                            response.sendRedirect("./report.jsp?type=" + type + "&date1=" + date1 + "&date2=" + date2 + "&err=erreur%20dans%20impression");
+                        }
                     }//GCH PDF
                 }//GCH
-                if (Objects.equals(type, "gchserv")) {
+                else if (Objects.equals(type, "gchserv")) {
                     if (Objects.equals(format, "excel")) {
                         if (new Export().exportGchServiceExcel(response, request, date1, date2) == null) {
-                            response.sendRedirect("./report.jsp?err=Table%20vide");
+                            response.sendRedirect("./report.jsp?type=" + type + "&date1=" + date1 + "&date2=" + date2 + "&err=erreur%20dans%20impression");
                         }
                     }//EMP XL
-
-                    if (Objects.equals(format, "pdf")) {
-
+                    else if (Objects.equals(format, "pdf")) {
+                        if (new Export().exportGchServicePDF(response, request, date1, date2) == 0) {
+                            response.sendRedirect("./report.jsp?type=" + type + "&date1=" + date1 + "&date2=" + date2 + "&err=erreur%20dans%20impression");
+                        }
                     }//EMP PDF
                 }//GCHSER
-
-                if (Objects.equals(type, "ndt")) {
+                else if (Objects.equals(type, "ndt")) {
                     if (Objects.equals(format, "excel")) {
                         if (new Export().exportNdtExcel(response, request, date1, date2) == null) {
-                            response.sendRedirect("./report.jsp?type=" + type + "&err=erreur%20dans%20impression");
+                            response.sendRedirect("./report.jsp?type=" + type + "&date1=" + date1 + "&date2=" + date2 + "&err=erreur%20dans%20impression");
                         }
                     }//NDT XL
-
-                    if (Objects.equals(format, "pdf")) {
-
+                    else if (Objects.equals(format, "pdf")) {
+                        if (new Export().exportNdtPDF(response, request, date1, date2) == 0) {
+                            response.sendRedirect("./report.jsp?type=" + type + "&date1=" + date1 + "&date2=" + date2 + "&err=erreur%20dans%20impression");
+                        }
                     }//NDT PDF
 
                 }//NDT
-
-                if (Objects.equals(type, "ndtt")) {
+                else if (Objects.equals(type, "ndtt")) {
                     if (Objects.equals(format, "excel")) {
                         if (new Export().exportNdttExcel(response, request, date1, date2) == null) {
-                            response.sendRedirect("./report.jsp?type=" + type + "&err=erreur%20dans%20impression");
+                            response.sendRedirect("./report.jsp?type=" + type + "&date1=" + date1 + "&date2=" + date2 + "&err=erreur%20dans%20impression");
                         }
                     }//NDTT XL
-
-                    if (Objects.equals(format, "pdf")) {
-
+                    else if (Objects.equals(format, "pdf")) {
+                        if (new Export().exportNdttPDF(response, request, date1, date2) == 0) {
+                            response.sendRedirect("./report.jsp?type=" + type + "&date1=" + date1 + "&date2=" + date2 + "&err=erreur%20dans%20impression");
+                        }
                     }//NDTT PDF
 
                 }//NDTT
-
-                if (Objects.equals(type, "ndta")) {
+                else if (Objects.equals(type, "ndta")) {
                     if (Objects.equals(format, "excel")) {
                         if (new Export().exportNdtaExcel(response, request, date1, date2) == null) {
-                            response.sendRedirect("./report.jsp?type=" + type + "&err=erreur%20dans%20impression");
+                            response.sendRedirect("./report.jsp?type=" + type + "&date1=" + date1 + "&date2=" + date2 + "&err=erreur%20dans%20impression");
                         }
                     }//NDTA XL
-
-                    if (Objects.equals(format, "pdf")) {
-
+                    else if (Objects.equals(format, "pdf")) {
+                        if (new Export().exportNdtaPDF(response, request, date1, date2) == 0) {
+                            response.sendRedirect("./report.jsp?type=" + type + "&date1=" + date1 + "&date2=" + date2 + "&err=erreur%20dans%20impression");
+                        }
                     }//NDTA PDF
 
                 }//NDTA
-                if (Objects.equals(type, "ndtsa")) {
+                else if (Objects.equals(type, "ndtsa")) {
                     if (Objects.equals(format, "excel")) {
                         if (new Export().exportNdtsaExcel(response, request, date1, date2) == null) {
-                            response.sendRedirect("./report.jsp?type=" + type + "&err=erreur%20dans%20impression");
+                            response.sendRedirect("./report.jsp?type=" + type + "&date1=" + date1 + "&date2=" + date2 + "&err=erreur%20dans%20impression");
                         }
                     }//NDTSA XL
-
-                    if (Objects.equals(format, "pdf")) {
-
+                    else if (Objects.equals(format, "pdf")) {
+                        if (new Export().exportNdtsaPDF(response, request, date1, date2) == 0) {
+                            response.sendRedirect("./report.jsp?type=" + type + "&date1=" + date1 + "&date2=" + date2 + "&err=erreur%20dans%20impression");
+                        }
                     }//NDTSA PDF
 
                 }//NDTSA
-                if (Objects.equals(type, "gla")) {
+                else if (Objects.equals(type, "gla")) {
                     if (Objects.equals(format, "excel")) {
                         if (new Export().exportGlaExcel(response, request, date1, date2) == null) {
-                            response.sendRedirect("./report.jsp?type=" + type + "&err=erreur%20dans%20impression");
+                            response.sendRedirect("./report.jsp?type=" + type + "&date1=" + date1 + "&date2=" + date2 + "&err=erreur%20dans%20impression");
                         }
                     }//NDTSA XL
-
-                    if (Objects.equals(format, "pdf")) {
-
+                    else if (Objects.equals(format, "pdf")) {
+                        if (new Export().exportGlaPDF(response, request, date1, date2) == 0) {
+                            response.sendRedirect("./report.jsp?type=" + type + "&date1=" + date1 + "&date2=" + date2 + "&err=erreur%20dans%20impression");
+                        }
                     }//NDTSA PDF
 
                 }//GLA
-
-                if (Objects.equals(type, "glt")) {
+                else if (Objects.equals(type, "glt")) {
                     if (Objects.equals(format, "excel")) {
                         if (new Export().exportGltExcel(response, request, date1, date2) == null) {
-                            response.sendRedirect("./report.jsp?type=" + type + "&err=erreur%20dans%20impression");
+                            response.sendRedirect("./report.jsp?type=" + type + "&date1=" + date1 + "&date2=" + date2 + "&err=erreur%20dans%20impression");
                         }
                     }//NDTSA XL
-
-                    if (Objects.equals(format, "pdf")) {
-
+                    else if (Objects.equals(format, "pdf")) {
+                        if (new Export().exportGltPDF(response, request, date1, date2) == 0) {
+                            response.sendRedirect("./report.jsp?type=" + type + "&date1=" + date1 + "&date2=" + date2 + "&err=erreur%20dans%20impression");
+                        }
                     }//NDTSA PDF
 
                 }//GLT
-                if (Objects.equals(type, "apl")) {
+                else if (Objects.equals(type, "apl")) {
                     if (Objects.equals(format, "excel")) {
                         if (new Export().exportAplExcel(response, request, date1, date2) == null) {
-                            //response.sendRedirect("./report.jsp?type=" + type + "&err=erreur%20dans%20impression");
+                            response.sendRedirect("./report.jsp?type=" + type + "&date1=" + date1 + "&date2=" + date2 + "&err=erreur%20dans%20impression");
                         }
                     }//APL XL
-
-                    if (Objects.equals(format, "pdf")) {
-
+                    else if (Objects.equals(format, "pdf")) {
+                        if (new Export().exportAplPDF(response, request, date1, date2) == 0) {
+                            response.sendRedirect("./report.jsp?type=" + type + "&date1=" + date1 + "&date2=" + date2 + "&err=erreur%20dans%20impression");
+                        }
                     }//APL PDF
 
                 }//APL
-                // response.sendRedirect("./report.jsp?type="+type+"&err=Type%20inconnue");
+                else {
+
+                    response.sendRedirect("./report.jsp?type=" + type + "&date1=" + date1 + "&date2=" + date2 + "&err=erreur%20dans%20impression");
+                }
             }
         } catch (Exception e) {
             response.sendRedirect("./report.jsp?err=" + e.getMessage());

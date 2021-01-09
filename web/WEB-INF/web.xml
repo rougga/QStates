@@ -28,6 +28,10 @@
         <servlet-name>Print</servlet-name>
         <servlet-class>main.servlets.Print</servlet-class>
     </servlet>
+    <servlet>
+        <servlet-name>EditTitles</servlet-name>
+        <servlet-class>main.servlets.EditTitles</servlet-class>
+    </servlet>
     <servlet-mapping>
         <servlet-name>Settings</servlet-name>
         <url-pattern>/Settings</url-pattern>
@@ -55,6 +59,10 @@
     <servlet-mapping>
         <servlet-name>Print</servlet-name>
         <url-pattern>/Print</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>EditTitles</servlet-name>
+        <url-pattern>/EditTitles</url-pattern>
     </servlet-mapping>
     <session-config>
         <session-timeout>

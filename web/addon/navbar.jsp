@@ -23,16 +23,16 @@
                     <span class=""></span> Rapport
                 </a>
                 <div class="dropdown-menu" aria-labelledby="navbarDropdownR" >
-                    <a class="dropdown-item font-weight-bold navHover" href="./report.jsp?type=gbl">RAPPORT GLOBALE</a>
-                    <a class="dropdown-item font-weight-bold navHover" href="./report.jsp?type=emp">RAPPORT EMPLOYE</a>
-                    <a class="dropdown-item font-weight-bold navHover" href="./report.jsp?type=empser">RAPPORT EMPLOYE (service)</a>
-                    <a class="dropdown-item font-weight-bold navHover" href="./report.jsp?type=gch">RAPPORT GUICHET</a>
-                    <a class="dropdown-item font-weight-bold navHover" href="./report.jsp?type=gchserv">RAPPORT GUICHET (service)</a>
+                    <a class="dropdown-item font-weight-bold navHover" href="/QStates/report.jsp?type=gbl">RAPPORT GLOBALE</a>
+                    <a class="dropdown-item font-weight-bold navHover" href="/QStates/report.jsp?type=emp">RAPPORT EMPLOYE</a>
+                    <a class="dropdown-item font-weight-bold navHover" href="/QStates/report.jsp?type=empser">RAPPORT EMPLOYE (service)</a>
+                    <a class="dropdown-item font-weight-bold navHover" href="/QStates/report.jsp?type=gch">RAPPORT GUICHET</a>
+                    <a class="dropdown-item font-weight-bold navHover" href="/QStates/report.jsp?type=gchserv">RAPPORT GUICHET (service)</a>
                     <div class="dropdown-divider"></div>
-                    <a class="dropdown-item font-weight-bold navHover" href="./report.jsp?type=gla">Grille attente</a>
-                    <a class="dropdown-item font-weight-bold navHover" href="./report.jsp?type=glt">Grille traitement</a>
+                    <a class="dropdown-item font-weight-bold navHover" href="/QStates/report.jsp?type=gla">Grille attente</a>
+                    <a class="dropdown-item font-weight-bold navHover" href="/QStates/report.jsp?type=glt">Grille traitement</a>
                     <div class="dropdown-divider"></div>
-                    <a class="dropdown-item font-weight-bold navHover" href="./report.jsp?type=apl">Détail des appels</a>
+                    <a class="dropdown-item font-weight-bold navHover" href="/QStates/report.jsp?type=apl">Détail des appels</a>
                 </div>
             </li> 
             <li class="nav-item dropdown" id="tranche">
@@ -40,10 +40,10 @@
                     <span class=""></span> Tranche horaire
                 </a>
                 <div class="dropdown-menu" aria-labelledby="navbarDropdownRe" >
-                    <a class="dropdown-item font-weight-bold navHover" href="./report.jsp?type=ndt">Nombre de tickets edités</a>
-                    <a class="dropdown-item font-weight-bold navHover" href="./report.jsp?type=ndtt">Nombre de tickets traités</a>
-                    <a class="dropdown-item font-weight-bold navHover" href="./report.jsp?type=ndta">Nombre de tickets absents</a>
-                    <a class="dropdown-item font-weight-bold navHover" href="./report.jsp?type=ndtsa">Nombre de tickets sans affectation</a>
+                    <a class="dropdown-item font-weight-bold navHover" href="/QStates/report.jsp?type=ndt">Nombre de tickets edités</a>
+                    <a class="dropdown-item font-weight-bold navHover" href="/QStates/report.jsp?type=ndtt">Nombre de tickets traités</a>
+                    <a class="dropdown-item font-weight-bold navHover" href="/QStates/report.jsp?type=ndta">Nombre de tickets absents</a>
+                    <a class="dropdown-item font-weight-bold navHover" href="/QStates/report.jsp?type=ndtsa">Nombre de tickets sans affectation</a>
                 </div>
             </li>
             <li class="nav-item dropdown" id="topics">
@@ -51,9 +51,9 @@
                     <span class="far fa-file-alt"></span> Rendement
                 </a>
                 <div class="dropdown-menu" aria-labelledby="rend" >
-                    <a class="dropdown-item  font-weight-bold navHover" href="./report.jsp?type=cnx">Connexions</a>
-                    <a class="dropdown-item  font-weight-bold navHover" href="./report.jsp?type=gbl">Pauses</a>
-                    <a class="dropdown-item  font-weight-bold navHover" href="./report.jsp?type=remp">Employés</a>
+                    <a class="dropdown-item  font-weight-bold navHover" href="/QStates/report.jsp?type=cnx">Connexions</a>
+                    <a class="dropdown-item  font-weight-bold navHover disabled" href="/QStates/report.jsp?type=gbl">Pauses</a>
+                    <a class="dropdown-item  font-weight-bold navHover" href="/QStates/report.jsp?type=remp">Employés</a>
                 </div>
             </li> 
             <li class="nav-item dropdown" id="topics">
@@ -61,9 +61,9 @@
                     <span class="far"></span> Supervision
                 </a>
                 <div class="dropdown-menu" aria-labelledby="superV" >
-                    <a class="dropdown-item  font-weight-bold navHover" href="./fj.jsp">Flash journée</a>
-                    <a class="dropdown-item  font-weight-bold navHover" href="./report.jsp?type=sgch">Guichets - Employés</a>
-                    <a class="dropdown-item  font-weight-bold navHover" href="./report.jsp?type=ser">Services</a>
+                    <a class="dropdown-item  font-weight-bold navHover" href="/QStates/fj.jsp">Flash journée</a>
+                    <a class="dropdown-item  font-weight-bold navHover" href="/QStates/report.jsp?type=sgch">Guichets - Employés</a>
+                    <a class="dropdown-item  font-weight-bold navHover" href="/QStates/report.jsp?type=ser">Services</a>
                 </div>
             </li>  
             <li class="nav-item" id="topics">
@@ -78,13 +78,14 @@
             <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle active" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                     <b><%= session.getAttribute("user")%></b>
-                    <img src="./img/icon/database.png">
+                    <img src="/QStates/img/icon/database.png">
                     <small><%= session.getAttribute("db")%></small>
                 </a>
                 <div class="dropdown-menu" aria-labelledby="navbarDropdown">
-                    <a class="dropdown-item font-weight-bold navHover" href="./settings.jsp" >Paramètres</a>
+                    <a class="dropdown-item font-weight-bold navHover" href="/QStates/settings.jsp" >Paramètres</a>
+                    <a class="dropdown-item font-weight-bold navHover" href="/QStates/setting/titles.jsp" >Les titres</a>
                     <div class="dropdown-divider"></div>
-                    <a class="dropdown-item font-weight-bold navHover" href="./Logoff">
+                    <a class="dropdown-item font-weight-bold navHover" href="/QStates/Logoff">
                         Déconnexion</a>
                 </div>
             </li>
