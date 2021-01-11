@@ -52,7 +52,8 @@
                 </button>
             </form>
             <footer>
-                <a target="_blank" href="#">CopyRight &COPY; 2020 NST-Maroc</a>
+                <a target="_blank" href="https://www.marocnst.ma/">CopyRight &COPY; 2020 Maroc-NST</a>
+                <p><%= CfgHandler.APP + " v" + CfgHandler.VERSION %></p>
             </footer>
 
         </div>
