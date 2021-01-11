@@ -22,9 +22,9 @@ public class CfgHandler {
     
     //MetaData
     static final String APP = "QStates";
-    static final String VERSION = "1.5";
+    static final String VERSION = "0.5";
     static final String COMPANY = "ROUGGA";
-    
+    static final String CLIENT = "";
     //Data files
     private final String cfgFile = "\\cfg\\cfg.properties";
     private final String userFile = "\\cfg\\db\\users.xml";

@@ -1,6 +1,5 @@
 package main;
 
-
 import com.itextpdf.text.BaseColor;
 import com.itextpdf.text.Document;
 import com.itextpdf.text.Element;
@@ -911,17 +910,13 @@ public class Export {
     }
 
     public int exportNdtPDF(HttpServletResponse response, HttpServletRequest request, String date1, String date2) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-    }
-
-    public int exportNdttPDF(HttpServletResponse response, HttpServletRequest request, String date1, String date2) {
         System.err.println("Printing PDF...");
         try {
             String filename = getRandomName() + ".pdf";
             String db = request.getSession().getAttribute("db") + "";
             TableGenerator tbl = new TableGenerator();
-            String title = new TitleHandler(request).getGblTitle() + " Du " + date1 + " Au " + date2;
-            List<ArrayList<String>> gtable = tbl.generateGblTable(request, date1, date2, db);
+            String title = new TitleHandler(request).getNdtTitle() + " Du " + date1 + " Au " + date2;
+            List<ArrayList<String>> gtable = tbl.generateNdtTable(request, date1, date2, db);
 
             if (gtable != null && gtable.size() > 0) {
                 ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
@@ -929,16 +924,16 @@ public class Export {
                 PdfWriter.getInstance(document, byteArrayOutputStream);
                 //fonts
                 Font H1 = new Font(Font.FontFamily.TIMES_ROMAN, 20, Font.BOLD);
-                Font tableHeader = new Font(Font.FontFamily.TIMES_ROMAN, 10, Font.BOLD);
+                Font tableHeader = new Font(Font.FontFamily.TIMES_ROMAN, 10, Font.BOLD, BaseColor.WHITE);
                 Font tableCell = new Font(Font.FontFamily.TIMES_ROMAN, 10, Font.NORMAL);
                 Font footer = new Font(Font.FontFamily.TIMES_ROMAN, 7, Font.ITALIC);
 
                 document.open();
 
                 //metadata
-                document.addAuthor("ROUGGA");
+                document.addAuthor(CfgHandler.COMPANY);
                 document.addTitle(title);
-                document.addCreator("QStates");
+                document.addCreator(CfgHandler.APP);
                 document.addSubject(title);
 
                 //title
@@ -947,47 +942,60 @@ public class Export {
                 document.add(preface);
 
                 //table
-                String[] cols = tbl.getGblCols();
-                float[] columnWidths = {6, 7, 2, 2, 2, 2, 2, 3, 3, 3, 4, 2, 3, 4, 2, 3};
+                String[] cols = tbl.getNdtCols();
+                float[] columnWidths = {6, 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,};
                 PdfPTable table = new PdfPTable(columnWidths);
                 table.setWidthPercentage(100);
-                table.setSpacingBefore(25f);
+                table.setSpacingBefore(40f);
 
                 table.getDefaultCell().setUseAscender(true);
                 table.getDefaultCell().setUseDescender(true);
 
                 //filling table with headers
                 for (int i = 0; i < cols.length; i++) {
-                    PdfPCell c1 = new PdfPCell(new Phrase(cols[i], tableHeader));
-                    c1.setHorizontalAlignment(Element.ALIGN_CENTER);
-                    c1.setVerticalAlignment(Element.ALIGN_MIDDLE);
-                    c1.setBackgroundColor(BaseColor.CYAN);
-                    table.addCell(c1);
+                    if ((i == 0) || (i == 1) || ((i > 8) && (i < 20))) {
+                        PdfPCell c1 = new PdfPCell(new Phrase(cols[i], tableHeader));
+                        c1.setHorizontalAlignment(Element.ALIGN_CENTER);
+                        c1.setVerticalAlignment(Element.ALIGN_MIDDLE);
+                        c1.setBackgroundColor(new BaseColor(184, 61, 186));
+                        table.addCell(c1);
+                    }
                 }
                 table.setHeaderRows(1);
 
                 //filling table with data
                 //row loop
+                PdfPCell c = new PdfPCell(new Phrase(String.valueOf(db), tableCell));
+                c.setHorizontalAlignment(Element.ALIGN_CENTER);
+                c.setVerticalAlignment(Element.ALIGN_MIDDLE);
+                c.setRowspan(gtable.size());
+                table.addCell(c);
                 for (int i = 0; i < gtable.size(); i++) {
-                    if (Objects.equals(gtable.get(i).get(3), "Sous-Totale")) {
-                        for (int j = 3; j < gtable.get(i).size(); j++) {
-                            PdfPCell c = new PdfPCell(new Phrase(String.valueOf(gtable.get(i).get(j)), tableCell));
-                            c.setBackgroundColor(BaseColor.LIGHT_GRAY);
-                            c.setVerticalAlignment(Element.ALIGN_MIDDLE);
-                            table.addCell(c);
+                    if (Objects.equals(gtable.get(i).get(0), "Sous-Totale")) {
+                        for (int j = 0; j < gtable.get(i).size(); j++) {
+                            if ((j == 0) || (j == 1) || ((j > 8) && (j < 19))) {
+                                c = new PdfPCell(new Phrase(String.valueOf(gtable.get(i).get(j)), tableCell));
+                                c.setBackgroundColor(BaseColor.LIGHT_GRAY);
+                                c.setVerticalAlignment(Element.ALIGN_MIDDLE);
+                                table.addCell(c);
+                            }
                         }
-                    } else if (Objects.equals(gtable.get(i).get(3), "Totale")) {
-                        for (int j = 3; j < gtable.get(i).size(); j++) {
-                            PdfPCell c = new PdfPCell(new Phrase(String.valueOf(gtable.get(i).get(j)), tableCell));
-                            c.setBackgroundColor(BaseColor.YELLOW);
-                            c.setVerticalAlignment(Element.ALIGN_MIDDLE);
-                            table.addCell(c);
+                    } else if (Objects.equals(gtable.get(i).get(0), "Totale")) {
+                        for (int j = 0; j < gtable.get(i).size(); j++) {
+                            if ((j == 0) || (j == 1) || ((j > 8) && (j < 19))) {
+                                c = new PdfPCell(new Phrase(String.valueOf(gtable.get(i).get(j)), tableCell));
+                                c.setBackgroundColor(BaseColor.YELLOW);
+                                c.setVerticalAlignment(Element.ALIGN_MIDDLE);
+                                table.addCell(c);
+                            }
                         }
                     } else {
-                        for (int j = 3; j < gtable.get(i).size(); j++) {
-                            PdfPCell c = new PdfPCell(new Phrase(String.valueOf(gtable.get(i).get(j)), tableCell));
-                            c.setVerticalAlignment(Element.ALIGN_MIDDLE);
-                            table.addCell(c);
+                        for (int j = 0; j < gtable.get(i).size(); j++) {
+                            if ((j == 0) || (j == 1) || ((j > 8) && (j < 19))) {
+                                c = new PdfPCell(new Phrase(String.valueOf(gtable.get(i).get(j)), tableCell));
+                                c.setVerticalAlignment(Element.ALIGN_MIDDLE);
+                                table.addCell(c);
+                            }
                         }
                     }
                 }
@@ -996,7 +1004,128 @@ public class Export {
                 document.add(table);
 
                 //footer
-                preface = new Paragraph(new SimpleDateFormat("dd-MM-yyyy").format(new Date()), footer);
+                preface = new Paragraph(new SimpleDateFormat("dd-MM-yyyy").format(new Date()) + " - " + CfgHandler.APP + " v" + CfgHandler.VERSION, footer);
+                preface.setAlignment(Element.ALIGN_RIGHT);
+                document.add(preface);
+
+                document.close();
+
+                //sending pdf
+                byte[] bytes = byteArrayOutputStream.toByteArray();
+                response.setContentType("application/pdf");
+                response.setHeader("Content-Disposition", "attachment;filename=" + filename);
+                response.setContentLength(bytes.length);
+                ServletOutputStream outStream = response.getOutputStream();
+                outStream.write(bytes, 0, bytes.length);
+                outStream.flush();
+                outStream.close();
+                return 1;
+            } else {
+                return 0;
+            }
+
+        } catch (Exception e) {
+            Logger.getLogger(Export.class.getName()).log(Level.SEVERE, null, e);
+            return 0;
+        }
+    }
+
+    public int exportNdttPDF(HttpServletResponse response, HttpServletRequest request, String date1, String date2) {
+         System.err.println("Printing PDF...");
+        try {
+            String filename = getRandomName() + ".pdf";
+            String db = request.getSession().getAttribute("db") + "";
+            TableGenerator tbl = new TableGenerator();
+            String title = new TitleHandler(request).getNdttTitle() + " Du " + date1 + " Au " + date2;
+            List<ArrayList<String>> gtable = tbl.generateNdttTable(request, date1, date2, db);
+
+            if (gtable != null && gtable.size() > 0) {
+                ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+                Document document = new Document(PageSize.A4.rotate());
+                PdfWriter.getInstance(document, byteArrayOutputStream);
+                //fonts
+                Font H1 = new Font(Font.FontFamily.TIMES_ROMAN, 20, Font.BOLD);
+                Font tableHeader = new Font(Font.FontFamily.TIMES_ROMAN, 10, Font.BOLD, BaseColor.WHITE);
+                Font tableCell = new Font(Font.FontFamily.TIMES_ROMAN, 10, Font.NORMAL);
+                Font footer = new Font(Font.FontFamily.TIMES_ROMAN, 7, Font.ITALIC);
+
+                document.open();
+
+                //metadata
+                document.addAuthor(CfgHandler.COMPANY);
+                document.addTitle(title);
+                document.addCreator(CfgHandler.APP);
+                document.addSubject(title);
+
+                //title
+                Paragraph preface = new Paragraph(title, H1);
+                preface.setAlignment(Element.ALIGN_CENTER);
+                document.add(preface);
+
+                //table
+                String[] cols = tbl.getNdtCols();
+                float[] columnWidths = {6, 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,};
+                PdfPTable table = new PdfPTable(columnWidths);
+                table.setWidthPercentage(100);
+                table.setSpacingBefore(40f);
+
+                table.getDefaultCell().setUseAscender(true);
+                table.getDefaultCell().setUseDescender(true);
+
+                //filling table with headers
+                for (int i = 0; i < cols.length; i++) {
+                    if ((i == 0) || (i == 1) || ((i > 8) && (i < 20))) {
+                        PdfPCell c1 = new PdfPCell(new Phrase(cols[i], tableHeader));
+                        c1.setHorizontalAlignment(Element.ALIGN_CENTER);
+                        c1.setVerticalAlignment(Element.ALIGN_MIDDLE);
+                        c1.setBackgroundColor(new BaseColor(184, 61, 186));
+                        table.addCell(c1);
+                    }
+                }
+                table.setHeaderRows(1);
+
+                //filling table with data
+                //row loop
+                PdfPCell c = new PdfPCell(new Phrase(String.valueOf(db), tableCell));
+                c.setHorizontalAlignment(Element.ALIGN_CENTER);
+                c.setVerticalAlignment(Element.ALIGN_MIDDLE);
+                c.setRowspan(gtable.size());
+                table.addCell(c);
+                for (int i = 0; i < gtable.size(); i++) {
+                    if (Objects.equals(gtable.get(i).get(0), "Sous-Totale")) {
+                        for (int j = 0; j < gtable.get(i).size(); j++) {
+                            if ((j == 0) || (j == 1) || ((j > 8) && (j < 19))) {
+                                c = new PdfPCell(new Phrase(String.valueOf(gtable.get(i).get(j)), tableCell));
+                                c.setBackgroundColor(BaseColor.LIGHT_GRAY);
+                                c.setVerticalAlignment(Element.ALIGN_MIDDLE);
+                                table.addCell(c);
+                            }
+                        }
+                    } else if (Objects.equals(gtable.get(i).get(0), "Totale")) {
+                        for (int j = 0; j < gtable.get(i).size(); j++) {
+                            if ((j == 0) || (j == 1) || ((j > 8) && (j < 19))) {
+                                c = new PdfPCell(new Phrase(String.valueOf(gtable.get(i).get(j)), tableCell));
+                                c.setBackgroundColor(BaseColor.YELLOW);
+                                c.setVerticalAlignment(Element.ALIGN_MIDDLE);
+                                table.addCell(c);
+                            }
+                        }
+                    } else {
+                        for (int j = 0; j < gtable.get(i).size(); j++) {
+                            if ((j == 0) || (j == 1) || ((j > 8) && (j < 19))) {
+                                c = new PdfPCell(new Phrase(String.valueOf(gtable.get(i).get(j)), tableCell));
+                                c.setVerticalAlignment(Element.ALIGN_MIDDLE);
+                                table.addCell(c);
+                            }
+                        }
+                    }
+                }
+
+                table.setHorizontalAlignment(Element.ALIGN_CENTER);
+                document.add(table);
+
+                //footer
+                preface = new Paragraph(new SimpleDateFormat("dd-MM-yyyy").format(new Date()) + " - " + CfgHandler.APP + " v" + CfgHandler.VERSION, footer);
                 preface.setAlignment(Element.ALIGN_RIGHT);
                 document.add(preface);
 
@@ -1023,11 +1152,245 @@ public class Export {
     }
 
     public int exportNdtaPDF(HttpServletResponse response, HttpServletRequest request, String date1, String date2) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+         System.err.println("Printing PDF...");
+        try {
+            String filename = getRandomName() + ".pdf";
+            String db = request.getSession().getAttribute("db") + "";
+            TableGenerator tbl = new TableGenerator();
+            String title = new TitleHandler(request).getNdtaTitle() + " Du " + date1 + " Au " + date2;
+            List<ArrayList<String>> gtable = tbl.generateNdtaTable(request, date1, date2, db);
+
+            if (gtable != null && gtable.size() > 0) {
+                ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+                Document document = new Document(PageSize.A4.rotate());
+                PdfWriter.getInstance(document, byteArrayOutputStream);
+                //fonts
+                Font H1 = new Font(Font.FontFamily.TIMES_ROMAN, 20, Font.BOLD);
+                Font tableHeader = new Font(Font.FontFamily.TIMES_ROMAN, 10, Font.BOLD, BaseColor.WHITE);
+                Font tableCell = new Font(Font.FontFamily.TIMES_ROMAN, 10, Font.NORMAL);
+                Font footer = new Font(Font.FontFamily.TIMES_ROMAN, 7, Font.ITALIC);
+
+                document.open();
+
+                //metadata
+                document.addAuthor(CfgHandler.COMPANY);
+                document.addTitle(title);
+                document.addCreator(CfgHandler.APP);
+                document.addSubject(title);
+
+                //title
+                Paragraph preface = new Paragraph(title, H1);
+                preface.setAlignment(Element.ALIGN_CENTER);
+                document.add(preface);
+
+                //table
+                String[] cols = tbl.getNdtCols();
+                float[] columnWidths = {6, 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,};
+                PdfPTable table = new PdfPTable(columnWidths);
+                table.setWidthPercentage(100);
+                table.setSpacingBefore(40f);
+
+                table.getDefaultCell().setUseAscender(true);
+                table.getDefaultCell().setUseDescender(true);
+
+                //filling table with headers
+                for (int i = 0; i < cols.length; i++) {
+                    if ((i == 0) || (i == 1) || ((i > 8) && (i < 20))) {
+                        PdfPCell c1 = new PdfPCell(new Phrase(cols[i], tableHeader));
+                        c1.setHorizontalAlignment(Element.ALIGN_CENTER);
+                        c1.setVerticalAlignment(Element.ALIGN_MIDDLE);
+                        c1.setBackgroundColor(new BaseColor(184, 61, 186));
+                        table.addCell(c1);
+                    }
+                }
+                table.setHeaderRows(1);
+
+                //filling table with data
+                //row loop
+                PdfPCell c = new PdfPCell(new Phrase(String.valueOf(db), tableCell));
+                c.setHorizontalAlignment(Element.ALIGN_CENTER);
+                c.setVerticalAlignment(Element.ALIGN_MIDDLE);
+                c.setRowspan(gtable.size());
+                table.addCell(c);
+                for (int i = 0; i < gtable.size(); i++) {
+                    if (Objects.equals(gtable.get(i).get(0), "Sous-Totale")) {
+                        for (int j = 0; j < gtable.get(i).size(); j++) {
+                            if ((j == 0) || (j == 1) || ((j > 8) && (j < 19))) {
+                                c = new PdfPCell(new Phrase(String.valueOf(gtable.get(i).get(j)), tableCell));
+                                c.setBackgroundColor(BaseColor.LIGHT_GRAY);
+                                c.setVerticalAlignment(Element.ALIGN_MIDDLE);
+                                table.addCell(c);
+                            }
+                        }
+                    } else if (Objects.equals(gtable.get(i).get(0), "Totale")) {
+                        for (int j = 0; j < gtable.get(i).size(); j++) {
+                            if ((j == 0) || (j == 1) || ((j > 8) && (j < 19))) {
+                                c = new PdfPCell(new Phrase(String.valueOf(gtable.get(i).get(j)), tableCell));
+                                c.setBackgroundColor(BaseColor.YELLOW);
+                                c.setVerticalAlignment(Element.ALIGN_MIDDLE);
+                                table.addCell(c);
+                            }
+                        }
+                    } else {
+                        for (int j = 0; j < gtable.get(i).size(); j++) {
+                            if ((j == 0) || (j == 1) || ((j > 8) && (j < 19))) {
+                                c = new PdfPCell(new Phrase(String.valueOf(gtable.get(i).get(j)), tableCell));
+                                c.setVerticalAlignment(Element.ALIGN_MIDDLE);
+                                table.addCell(c);
+                            }
+                        }
+                    }
+                }
+
+                table.setHorizontalAlignment(Element.ALIGN_CENTER);
+                document.add(table);
+
+                //footer
+                preface = new Paragraph(new SimpleDateFormat("dd-MM-yyyy").format(new Date()) + " - " + CfgHandler.APP + " v" + CfgHandler.VERSION, footer);
+                preface.setAlignment(Element.ALIGN_RIGHT);
+                document.add(preface);
+
+                document.close();
+
+                //sending pdf
+                byte[] bytes = byteArrayOutputStream.toByteArray();
+                response.setContentType("application/pdf");
+                response.setHeader("Content-Disposition", "attachment;filename=" + filename);
+                response.setContentLength(bytes.length);
+                ServletOutputStream outStream = response.getOutputStream();
+                outStream.write(bytes, 0, bytes.length);
+                outStream.flush();
+                outStream.close();
+                return 1;
+            } else {
+                return 0;
+            }
+
+        } catch (Exception e) {
+            Logger.getLogger(Export.class.getName()).log(Level.SEVERE, null, e);
+            return 0;
+        }
     }
 
     public int exportNdtsaPDF(HttpServletResponse response, HttpServletRequest request, String date1, String date2) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        System.err.println("Printing PDF...");
+        try {
+            String filename = getRandomName() + ".pdf";
+            String db = request.getSession().getAttribute("db") + "";
+            TableGenerator tbl = new TableGenerator();
+            String title = new TitleHandler(request).getNdtsaTitle() + " Du " + date1 + " Au " + date2;
+            List<ArrayList<String>> gtable = tbl.generateNdtsaTable(request, date1, date2, db);
+
+            if (gtable != null && gtable.size() > 0) {
+                ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+                Document document = new Document(PageSize.A4.rotate());
+                PdfWriter.getInstance(document, byteArrayOutputStream);
+                //fonts
+                Font H1 = new Font(Font.FontFamily.TIMES_ROMAN, 20, Font.BOLD);
+                Font tableHeader = new Font(Font.FontFamily.TIMES_ROMAN, 10, Font.BOLD, BaseColor.WHITE);
+                Font tableCell = new Font(Font.FontFamily.TIMES_ROMAN, 10, Font.NORMAL);
+                Font footer = new Font(Font.FontFamily.TIMES_ROMAN, 7, Font.ITALIC);
+
+                document.open();
+
+                //metadata
+                document.addAuthor(CfgHandler.COMPANY);
+                document.addTitle(title);
+                document.addCreator(CfgHandler.APP);
+                document.addSubject(title);
+
+                //title
+                Paragraph preface = new Paragraph(title, H1);
+                preface.setAlignment(Element.ALIGN_CENTER);
+                document.add(preface);
+
+                //table
+                String[] cols = tbl.getNdtCols();
+                float[] columnWidths = {6, 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,};
+                PdfPTable table = new PdfPTable(columnWidths);
+                table.setWidthPercentage(100);
+                table.setSpacingBefore(40f);
+
+                table.getDefaultCell().setUseAscender(true);
+                table.getDefaultCell().setUseDescender(true);
+
+                //filling table with headers
+                for (int i = 0; i < cols.length; i++) {
+                    if ((i == 0) || (i == 1) || ((i > 8) && (i < 20))) {
+                        PdfPCell c1 = new PdfPCell(new Phrase(cols[i], tableHeader));
+                        c1.setHorizontalAlignment(Element.ALIGN_CENTER);
+                        c1.setVerticalAlignment(Element.ALIGN_MIDDLE);
+                        c1.setBackgroundColor(new BaseColor(184, 61, 186));
+                        table.addCell(c1);
+                    }
+                }
+                table.setHeaderRows(1);
+
+                //filling table with data
+                //row loop
+                PdfPCell c = new PdfPCell(new Phrase(String.valueOf(db), tableCell));
+                c.setHorizontalAlignment(Element.ALIGN_CENTER);
+                c.setVerticalAlignment(Element.ALIGN_MIDDLE);
+                c.setRowspan(gtable.size());
+                table.addCell(c);
+                for (int i = 0; i < gtable.size(); i++) {
+                    if (Objects.equals(gtable.get(i).get(0), "Sous-Totale")) {
+                        for (int j = 0; j < gtable.get(i).size(); j++) {
+                            if ((j == 0) || (j == 1) || ((j > 8) && (j < 19))) {
+                                c = new PdfPCell(new Phrase(String.valueOf(gtable.get(i).get(j)), tableCell));
+                                c.setBackgroundColor(BaseColor.LIGHT_GRAY);
+                                c.setVerticalAlignment(Element.ALIGN_MIDDLE);
+                                table.addCell(c);
+                            }
+                        }
+                    } else if (Objects.equals(gtable.get(i).get(0), "Totale")) {
+                        for (int j = 0; j < gtable.get(i).size(); j++) {
+                            if ((j == 0) || (j == 1) || ((j > 8) && (j < 19))) {
+                                c = new PdfPCell(new Phrase(String.valueOf(gtable.get(i).get(j)), tableCell));
+                                c.setBackgroundColor(BaseColor.YELLOW);
+                                c.setVerticalAlignment(Element.ALIGN_MIDDLE);
+                                table.addCell(c);
+                            }
+                        }
+                    } else {
+                        for (int j = 0; j < gtable.get(i).size(); j++) {
+                            if ((j == 0) || (j == 1) || ((j > 8) && (j < 19))) {
+                                c = new PdfPCell(new Phrase(String.valueOf(gtable.get(i).get(j)), tableCell));
+                                c.setVerticalAlignment(Element.ALIGN_MIDDLE);
+                                table.addCell(c);
+                            }
+                        }
+                    }
+                }
+
+                table.setHorizontalAlignment(Element.ALIGN_CENTER);
+                document.add(table);
+
+                //footer
+                preface = new Paragraph(new SimpleDateFormat("dd-MM-yyyy").format(new Date()) + " - " + CfgHandler.APP + " v" + CfgHandler.VERSION, footer);
+                preface.setAlignment(Element.ALIGN_RIGHT);
+                document.add(preface);
+
+                document.close();
+
+                //sending pdf
+                byte[] bytes = byteArrayOutputStream.toByteArray();
+                response.setContentType("application/pdf");
+                response.setHeader("Content-Disposition", "attachment;filename=" + filename);
+                response.setContentLength(bytes.length);
+                ServletOutputStream outStream = response.getOutputStream();
+                outStream.write(bytes, 0, bytes.length);
+                outStream.flush();
+                outStream.close();
+                return 1;
+            } else {
+                return 0;
+            }
+
+        } catch (Exception e) {
+            Logger.getLogger(Export.class.getName()).log(Level.SEVERE, null, e);
+            return 0;
+        }
     }
 
     public int exportGlaPDF(HttpServletResponse response, HttpServletRequest request, String date1, String date2) {
@@ -1092,7 +1455,7 @@ public class Export {
                 c.setRowspan(gtable.size());
                 table.addCell(c);
                 for (int i = 0; i < gtable.size(); i++) {
-                    if (Objects.equals(gtable.get(i).get(3), "Sous-Totale")) {
+                    if (Objects.equals(gtable.get(i).get(0), "Sous-Totale")) {
                         for (int j = 0; j < gtable.get(i).size(); j++) {
                             if (j != 7) {
                                 c = new PdfPCell(new Phrase(String.valueOf(gtable.get(i).get(j)), tableCell));
@@ -1101,7 +1464,7 @@ public class Export {
                                 table.addCell(c);
                             }
                         }
-                    } else if (Objects.equals(gtable.get(i).get(3), "Totale")) {
+                    } else if (Objects.equals(gtable.get(i).get(0), "Totale")) {
                         for (int j = 0; j < gtable.get(i).size(); j++) {
                             if (j != 7) {
                                 c = new PdfPCell(new Phrase(String.valueOf(gtable.get(i).get(j)), tableCell));
@@ -1125,7 +1488,7 @@ public class Export {
                 document.add(table);
 
                 //footer
-                preface = new Paragraph(new SimpleDateFormat("dd-MM-yyyy").format(new Date()) +" - "+ CfgHandler.APP + " v"+CfgHandler.VERSION, footer);
+                preface = new Paragraph(new SimpleDateFormat("dd-MM-yyyy").format(new Date()) + " - " + CfgHandler.APP + " v" + CfgHandler.VERSION, footer);
                 preface.setAlignment(Element.ALIGN_RIGHT);
                 document.add(preface);
 
@@ -1213,7 +1576,7 @@ public class Export {
                 c.setRowspan(gtable.size());
                 table.addCell(c);
                 for (int i = 0; i < gtable.size(); i++) {
-                    if (Objects.equals(gtable.get(i).get(3), "Sous-Totale")) {
+                    if (Objects.equals(gtable.get(i).get(0), "Sous-Totale")) {
                         for (int j = 0; j < gtable.get(i).size(); j++) {
                             if (j != 7) {
                                 c = new PdfPCell(new Phrase(String.valueOf(gtable.get(i).get(j)), tableCell));
@@ -1222,7 +1585,7 @@ public class Export {
                                 table.addCell(c);
                             }
                         }
-                    } else if (Objects.equals(gtable.get(i).get(3), "Totale")) {
+                    } else if (Objects.equals(gtable.get(i).get(0), "Totale")) {
                         for (int j = 0; j < gtable.get(i).size(); j++) {
                             if (j != 7) {
                                 c = new PdfPCell(new Phrase(String.valueOf(gtable.get(i).get(j)), tableCell));
@@ -1246,7 +1609,7 @@ public class Export {
                 document.add(table);
 
                 //footer
-                preface = new Paragraph(new SimpleDateFormat("dd-MM-yyyy").format(new Date()) +" - "+ CfgHandler.APP + " v"+CfgHandler.VERSION, footer);
+                preface = new Paragraph(new SimpleDateFormat("dd-MM-yyyy").format(new Date()) + " - " + CfgHandler.APP + " v" + CfgHandler.VERSION, footer);
                 preface.setAlignment(Element.ALIGN_RIGHT);
                 document.add(preface);
 

@@ -25,6 +25,7 @@
         <link href="./css/Chart.min.css" rel="stylesheet" type="text/css"/>
         <link href="./css/body.css" rel="stylesheet" type="text/css"/>
         <link href="./css/navbar.css" rel="stylesheet" type="text/css"/>
+        <script src="./js/rememberDate.js"></script>
     </head>
     <body>
         <div class="container-lg p-0">
@@ -213,12 +214,13 @@
         </div>
 
         <script>
-            var timer = setTimeout(function () {window.location = window.location.href;}, 60000);
+            var timer = setInterval(function () {window.location = window.location.href;}, 60000);
             $(document).ready(function () {
                 var d = <%= waitPer %>;
                 if (d >=80){
                     alert("le pourcentage d'attente est supérieur à 80% !!!");
                 }
+                updateLinks();
             });
         </script>
     </body>

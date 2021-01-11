@@ -44,6 +44,7 @@
         <script src="js/moment.min.js"></script>
         <link href="css/navbar.css" rel="stylesheet" type="text/css"/> 
         <link href="css/body.css" rel="stylesheet" type="text/css"/>
+        <script src="js/rememberDate.js"></script>
         <script src="js/echarts-en.min.js"></script>
     </head>
     <body>
@@ -90,7 +91,7 @@
                     <tbody  class="font-weight-bold ">
 
                         <%
-                            if (!table2.isEmpty()) {
+                            if (table2!= null && table2.size()>0) {
                                 for (int i = 0; i < table2.size(); i++) {
                         %>
                         <tr class="db1">
@@ -107,7 +108,7 @@
 
                     </tbody>
                 </table>
-                
+
             </div>
             <div class="footer">
                 <%= data.get("bottom") %>
@@ -123,7 +124,7 @@
                     gchser: ".0,.1,.2,.3,.4,.5,.11,.14",
                     ndt: ".0,.1,.9,.10,.11,.12,.13,.14,.15,.16,.17,.18,.19",
                     cnx: ".0,.1,.2,.3,.4,.5",
-                    remp: ".0,.1,.2,.10,.11,.12,.13,.14,.15",
+                    remp: ".0,.1,.3,.10,.11,.12,.13,.14,.15",
                     ser: ".0,.1,.2,.3,.4,.5,.6,.7,.8",
                     sgch: ".0,.1,.2,.3,.4",
                     apl: ".0,.1,.2,.7,.8,.9,.10,.11",
@@ -244,50 +245,76 @@
                     if ($(this).val() > $("#date2").val()) {
                         alert("La date Du est plus gros que la date Au.");
                         $("#date2").val(new Date().toLocaleDateString('en-CA'));
+                    }else{
+                        
+        addDateToSessionStorage();
+        updateLinks();
                     }
                 });
                 $("#date2").on('change', function () {
                     if ($("#date1").val() > $("#date2").val()) {
                         alert("La date Du est plus gros que la date Au.");
                         $("#date2").val(new Date().toLocaleDateString('en-CA'));
+                    }else{
+                        
+        addDateToSessionStorage();
+        updateLinks();
                     }
                 });
                 $("#today").on('click', function () {
                     $("#date1").val(moment().format('YYYY-MM-DD'));
                     $("#date2").val(moment().format('YYYY-MM-DD'));
+        addDateToSessionStorage();
+        updateLinks();
                 });
                 $("#yesterday").on('click', function () {
                     $("#date1").val(moment().subtract(1, 'days').format('YYYY-MM-DD'));
                     $("#date2").val(moment().subtract(1, 'days').format('YYYY-MM-DD'));
+        addDateToSessionStorage();
+        updateLinks();
                 });
                 
                 $("#cWeek").on('click', function () {
                     $("#date1").val(moment().startOf('week').format('YYYY-MM-DD'));
                     $("#date2").val(moment().endOf('week').format('YYYY-MM-DD'));
+        addDateToSessionStorage();
+        updateLinks();
                 });
                 $("#lWeek").on('click', function () {
                     $("#date1").val(moment().subtract(1, 'week').startOf('week').format('YYYY-MM-DD'));
                     $("#date2").val(moment().subtract(1, 'week').endOf('week').format('YYYY-MM-DD'));
+        addDateToSessionStorage();
+        updateLinks();
                 });
                 $("#cMonth").on('click', function () {
                     $("#date1").val(moment().startOf('month').format('YYYY-MM-DD'));
                     $("#date2").val(moment().endOf('month').format('YYYY-MM-DD'));
+        addDateToSessionStorage();
+        updateLinks();
                 });
                 $("#lMonth").on('click', function () {
                     $("#date1").val(moment().subtract(1, 'month').startOf('month').format('YYYY-MM-DD'));
                     $("#date2").val(moment().subtract(1, 'month').endOf('month').format('YYYY-MM-DD'));
+        addDateToSessionStorage();
+        updateLinks();
                 });
                 $("#cYear").on('click', function () {
                     $("#date1").val(moment().startOf('year').format('YYYY-MM-DD'));
                     $("#date2").val(moment().endOf('year').format('YYYY-MM-DD'));
+        addDateToSessionStorage();
+        updateLinks();
                 });
                 $("#lYear").on('click', function () {
                     $("#date1").val(moment().subtract(1, 'year').startOf('year').format('YYYY-MM-DD'));
                     $("#date2").val(moment().subtract(1, 'year').endOf('year').format('YYYY-MM-DD'));
+        addDateToSessionStorage();
+        updateLinks();
                 });
                 
-                showCols("<%= type%>");
                 
+                showCols("<%= type%>");
+                setDates();
+   updateLinks();
             });
 
         </script>

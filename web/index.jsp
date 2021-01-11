@@ -1,3 +1,4 @@
+<%@page import="main.CfgHandler"%>
 <%@page contentType="text/html" pageEncoding="UTF-8"%>
 <!doctype html>
 <html>
@@ -8,7 +9,7 @@
         <link rel="icon" type="image/png" href="./img/favicon-32x32.png">
         <script src="js/jquery.js"></script>
         <link href="css/bootstrap.min.css" rel="stylesheet" type="text/css"/>
-        <script src="js/bootstrap.min.js"></script>
+        <script src="js/bootstrap.bundle.min.js"></script>
         <link href="css/body.css" rel="stylesheet" type="text/css"/> 
         <link href="css/login.css" rel="stylesheet" type="text/css"/> 
         <link href="css/loginSS.css" rel="stylesheet" type="text/css"/>
@@ -50,7 +51,9 @@
                     <span class="state">Connexion</span>
                 </button>
             </form>
-            <footer><a target="_blank" href="#">CopyRight &COPY; 2020 NST-Maroc</a></footer>
+            <footer>
+                <a target="_blank" href="#">CopyRight &COPY; 2020 NST-Maroc</a>
+            </footer>
 
         </div>
     </body>

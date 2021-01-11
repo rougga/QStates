@@ -17,6 +17,7 @@
         <link href="./css/Chart.min.css" rel="stylesheet" type="text/css"/>
         <link href="./css/body.css" rel="stylesheet" type="text/css"/>
         <link href="./css/navbar.css" rel="stylesheet" type="text/css"/>
+        <script src="./js/rememberDate.js"></script>
     </head>
     <body>
         <div class="container-lg p-0">
@@ -82,7 +83,10 @@
             </div>
         </div>
         <script>
-            var timer = setTimeout(function () {window.location = window.location.href;}, 60000);
+            var timer = setInterval(function () {window.location = window.location.href;}, 60000);
+            $(document).ready(function () {
+                updateLinks();
+            });
         </script>
     </body>
 </html>
