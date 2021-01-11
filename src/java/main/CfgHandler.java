@@ -5,7 +5,6 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.util.Objects;
 import java.util.Properties;
 import javax.servlet.http.HttpServletRequest;
@@ -21,10 +20,10 @@ import org.xml.sax.SAXException;
 public class CfgHandler {
     
     //MetaData
-    static final String APP = "QStates";
-    static final String VERSION = "0.5";
-    static final String COMPANY = "ROUGGA";
-    static final String CLIENT = "";
+    public static final String APP = "QStates";
+    public static final String VERSION = "0.5";
+    public static final String COMPANY = "ROUGGA";
+    public static final String CLIENT = "";
     //Data files
     private final String cfgFile = "\\cfg\\cfg.properties";
     private final String userFile = "\\cfg\\db\\users.xml";

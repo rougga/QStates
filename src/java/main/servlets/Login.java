@@ -59,7 +59,7 @@ public class Login extends HttpServlet {
                                     out.println("<br>PASS CORRECT<br>");
                                     request.getSession().setAttribute("user", username);
                                     request.getSession().setAttribute("grade", eElement.getElementsByTagName("grade").item(0).getTextContent());
-                                    try (ResultSet r = new PgConnection().getStatement().executeQuery("SELECT value FROM t_basic_par where name='SYSTEM_TITLE';")) {
+                                    try (ResultSet r = new PgConnection().getStatement().executeQuery("SELECT value FROM t_basic_par where name='BRANCH_NAME';")) {
                                         r.next();
                                         request.getSession().setAttribute("db", r.getString("value"));
                                         response.sendRedirect("./home.jsp");
