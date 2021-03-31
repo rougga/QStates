@@ -32,6 +32,10 @@
         <servlet-name>EditTitles</servlet-name>
         <servlet-class>main.servlets.EditTitles</servlet-class>
     </servlet>
+    <servlet>
+        <servlet-name>AddTask</servlet-name>
+        <servlet-class>main.servlets.AddTask</servlet-class>
+    </servlet>
     <servlet-mapping>
         <servlet-name>Settings</servlet-name>
         <url-pattern>/Settings</url-pattern>
@@ -63,6 +67,40 @@
     <servlet-mapping>
         <servlet-name>EditTitles</servlet-name>
         <url-pattern>/EditTitles</url-pattern>
+    </servlet-mapping>
+    <error-page>
+        <!-- Missing login -->
+        <error-code>401</error-code>
+        <location>/error.jsp</location>
+    </error-page>
+    <error-page>
+        <!-- Forbidden directory listing -->
+        <error-code>403</error-code>
+        <location>/error.jsp</location>
+    </error-page>
+    <error-page>
+        <!-- Missing resource -->
+        <error-code>404</error-code>
+        <location>/addon/error/error404.jsp</location>
+    </error-page>
+    <error-page>
+        <!-- Missing resource -->
+        <error-code>405</error-code>
+        <location>/addon/error/error404.jsp</location>
+    </error-page>
+    <error-page>
+        <!-- Uncaught exception -->
+        <error-code>500</error-code>
+        <location>/error.jsp</location>
+    </error-page>
+    <error-page>
+        <!-- Unsupported servlet method -->
+        <error-code>503</error-code>
+        <location>/error.jsp</location>
+    </error-page>
+    <servlet-mapping>
+        <servlet-name>AddTask</servlet-name>
+        <url-pattern>/addTask</url-pattern>
     </servlet-mapping>
     <session-config>
         <session-timeout>

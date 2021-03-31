@@ -18,12 +18,12 @@ import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
 public class CfgHandler {
-    
+
     //MetaData
     public static final String APP = "QStates";
-    public static final String VERSION = "0.5.1";
+    public static final String VERSION = "0.5.2";
     public static final String COMPANY = "ROUGGA";
-    public static final String CLIENT = "";
+    public static final String CLIENT = "NST";
     //Data files
     private final String cfgFile = "\\cfg\\cfg.properties";
     private final String userFile = "\\cfg\\db\\users.xml";
@@ -31,7 +31,7 @@ public class CfgHandler {
     private final String extraFile = "\\cfg\\db\\extra.xml";
     private final String titleFile = "\\cfg\\db\\title.xml";
     //excel
-    
+
     private final String gblTempExcel = "\\cfg\\excel\\gbltemp.xlsx";
     private final String empTempExcel = "\\cfg\\excel\\emptemp.xlsx";
     private final String empServTempExcel = "\\cfg\\excel\\empservtemp.xlsx";
@@ -41,8 +41,12 @@ public class CfgHandler {
     private final String glaTempExcel = "\\cfg\\excel\\glatemp.xlsx";
     private final String gltTempExcel = "\\cfg\\excel\\glttemp.xlsx";
     private final String aplTempExcel = "\\cfg\\excel\\apltemp.xlsx";
-    
-    
+    //Pages
+
+    public static String PAGE_HOME = "/QStates/index.jsp";
+    public static String PAGE_TASK = "/QStates/setting/taches.jsp";
+
+    //declaration        
     private HttpServletRequest request;
     private FileReader FR = null;
     private Properties prop = null;
@@ -140,7 +144,7 @@ public class CfgHandler {
     }
 
     public String getGblTempExcel() {
-        return request.getServletContext().getRealPath(gblTempExcel) ;
+        return request.getServletContext().getRealPath(gblTempExcel);
     }
 
     public String getEmpTempExcel() {
