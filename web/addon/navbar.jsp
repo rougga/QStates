@@ -2,7 +2,7 @@
 <%@page import="java.util.Objects"%>
 <%
     if (Objects.equals(session.getAttribute("user"), null)) {
-        response.sendRedirect("./index.jsp");
+        response.sendRedirect("/QStates/index.jsp");
     }
 %>
 <nav class="navbar navbar-expand-lg navbar-dark " style="background-color: #b83dba;">
@@ -15,7 +15,7 @@
     <div class="collapse navbar-collapse" id="collapsibleNavbar">
         <ul class="navbar-nav mr-auto">
             <li class="nav-item active" id="home">
-                <a class="nav-link font-weight-bold" href="./home.jsp">
+                <a class="nav-link font-weight-bold" href="/QStates/home.jsp">
                     <span class="fas fa-home font-weight-bold"></span> Accueil
                 </a>
             </li>
@@ -24,16 +24,17 @@
                     <span class=""></span> Rapport
                 </a>
                 <div class="dropdown-menu" aria-labelledby="navbarDropdownR" >
-                    <a class="dropdown-item font-weight-bold navHover d" href="/QStates/report.jsp?type=gbl&d=d">RAPPORT GLOBALE</a>
-                    <a class="dropdown-item font-weight-bold navHover d" href="/QStates/report.jsp?type=emp&d=d">RAPPORT EMPLOYE</a>
-                    <a class="dropdown-item font-weight-bold navHover d" href="/QStates/report.jsp?type=empser&d=d">RAPPORT EMPLOYE (service)</a>
-                    <a class="dropdown-item font-weight-bold navHover d" href="/QStates/report.jsp?type=gch&d=d">RAPPORT GUICHET</a>
-                    <a class="dropdown-item font-weight-bold navHover d" href="/QStates/report.jsp?type=gchserv&d=d">RAPPORT GUICHET (service)</a>
+                    <a class="dropdown-item font-weight-bold navHover d" href="<%=CfgHandler.PAGE_REPORT%>?type=gbl&d=d">RAPPORT GLOBALE</a>
+                    <a class="dropdown-item font-weight-bold navHover d" href="<%=CfgHandler.PAGE_REPORT%>?type=emp&d=d">RAPPORT EMPLOYE</a>
+                    <a class="dropdown-item font-weight-bold navHover d" href="<%=CfgHandler.PAGE_REPORT%>?type=empser&d=d">RAPPORT EMPLOYE (service)</a>
+                    <a class="dropdown-item font-weight-bold navHover d" href="<%=CfgHandler.PAGE_REPORT%>?type=gch&d=d">RAPPORT GUICHET</a>
+                    <a class="dropdown-item font-weight-bold navHover d" href="<%=CfgHandler.PAGE_REPORT%>?type=gchserv&d=d">RAPPORT GUICHET (service)</a>
+                    <a class="dropdown-item font-weight-bold navHover d" href="<%=CfgHandler.PAGE_REPORT%>?type=tch&d=d">RAPPORT TACHE</a>
                     <div class="dropdown-divider"></div>
-                    <a class="dropdown-item font-weight-bold navHover d" href="/QStates/report.jsp?type=gla&d=d">Grille attente</a>
-                    <a class="dropdown-item font-weight-bold navHover d" href="/QStates/report.jsp?type=glt&d=d">Grille traitement</a>
+                    <a class="dropdown-item font-weight-bold navHover d" href="<%=CfgHandler.PAGE_REPORT%>?type=gla&d=d">Grille attente</a>
+                    <a class="dropdown-item font-weight-bold navHover d" href="<%=CfgHandler.PAGE_REPORT%>?type=glt&d=d">Grille traitement</a>
                     <div class="dropdown-divider"></div>
-                    <a class="dropdown-item font-weight-bold navHover d" href="/QStates/report.jsp?type=apl&d=d">Détail des appels</a>
+                    <a class="dropdown-item font-weight-bold navHover d" href="<%=CfgHandler.PAGE_REPORT%>?type=apl&d=d">Détail des appels</a>
                 </div>
             </li> 
             <li class="nav-item dropdown" id="tranche">
@@ -41,10 +42,10 @@
                     <span class=""></span> Tranche horaire
                 </a>
                 <div class="dropdown-menu" aria-labelledby="navbarDropdownRe" >
-                    <a class="dropdown-item font-weight-bold navHover d" href="/QStates/report.jsp?type=ndt&d=d">Nombre de tickets edités</a>
-                    <a class="dropdown-item font-weight-bold navHover d" href="/QStates/report.jsp?type=ndtt&d=d">Nombre de tickets traités</a>
-                    <a class="dropdown-item font-weight-bold navHover d" href="/QStates/report.jsp?type=ndta&d=d">Nombre de tickets absents</a>
-                    <a class="dropdown-item font-weight-bold navHover d" href="/QStates/report.jsp?type=ndtsa&d=d">Nombre de tickets sans affectation</a>
+                    <a class="dropdown-item font-weight-bold navHover d" href="<%=CfgHandler.PAGE_REPORT%>?type=ndt&d=d">Nombre de tickets edités</a>
+                    <a class="dropdown-item font-weight-bold navHover d" href="<%=CfgHandler.PAGE_REPORT%>?type=ndtt&d=d">Nombre de tickets traités</a>
+                    <a class="dropdown-item font-weight-bold navHover d" href="<%=CfgHandler.PAGE_REPORT%>?type=ndta&d=d">Nombre de tickets absents</a>
+                    <a class="dropdown-item font-weight-bold navHover d" href="<%=CfgHandler.PAGE_REPORT%>?type=ndtsa&d=d">Nombre de tickets sans affectation</a>
                 </div>
             </li>
             <li class="nav-item dropdown" id="topics">
@@ -52,9 +53,9 @@
                     <span class="far fa-file-alt"></span> Rendement
                 </a>
                 <div class="dropdown-menu" aria-labelledby="rend" >
-                    <a class="dropdown-item  font-weight-bold navHover d" href="/QStates/report.jsp?type=cnx&d=d">Connexions</a>
-                    <a class="dropdown-item  font-weight-bold navHover d disabled" href="/QStates/report.jsp?type=gbl&d=d">Pauses</a>
-                    <a class="dropdown-item  font-weight-bold navHover d" href="/QStates/report.jsp?type=remp&d=d">Employés</a>
+                    <a class="dropdown-item  font-weight-bold navHover d" href="<%=CfgHandler.PAGE_REPORT%>?type=cnx&d=d">Connexions</a>
+                    <a class="dropdown-item  font-weight-bold navHover d disabled" href="<%=CfgHandler.PAGE_REPORT%>?type=gbl&d=d">Pauses</a>
+                    <a class="dropdown-item  font-weight-bold navHover d" href="<%=CfgHandler.PAGE_REPORT%>?type=remp&d=d">Employés</a>
                 </div>
             </li> 
             <li class="nav-item dropdown" id="topics">
@@ -63,8 +64,8 @@
                 </a>
                 <div class="dropdown-menu" aria-labelledby="superV" >
                     <a class="dropdown-item  font-weight-bold navHover" href="/QStates/fj.jsp">Flash journée</a>
-                    <a class="dropdown-item  font-weight-bold navHover" href="/QStates/report.jsp?type=sgch">Guichets - Employés</a>
-                    <a class="dropdown-item  font-weight-bold navHover" href="/QStates/report.jsp?type=ser">Services</a>
+                    <a class="dropdown-item  font-weight-bold navHover" href="<%=CfgHandler.PAGE_REPORT%>?type=sgch">Guichets - Employés</a>
+                    <a class="dropdown-item  font-weight-bold navHover" href="<%=CfgHandler.PAGE_REPORT%>?type=ser">Services</a>
                 </div>
             </li>  
             <li class="nav-item" id="topics">

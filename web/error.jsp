@@ -17,13 +17,13 @@
         <title>QStates</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link rel="icon" type="image/png" href="./img/favicon-32x32.png">
-        <script src="./js/jquery.js"></script>
-        <link href="./css/bootstrap.min.css" rel="stylesheet" type="text/css"/>
-        <script src="./js/bootstrap.bundle.min.js"></script>
-        <script src="./js/Chart.min.js"></script>
-        <link href="./css/Chart.min.css" rel="stylesheet" type="text/css"/>
-        <link href="./css/body.css" rel="stylesheet" type="text/css"/>
-        <link href="./css/navbar.css" rel="stylesheet" type="text/css"/>
+        <script src="/QStates/js/jquery.js"></script>
+        <link href="/QStates/css/bootstrap.min.css" rel="stylesheet" type="text/css"/>
+        <script src="/QStates/js/bootstrap.bundle.min.js"></script>
+        <script src="/QStates/js/Chart.min.js"></script>
+        <link href="/QStates/css/Chart.min.css" rel="stylesheet" type="text/css"/>
+        <link href="/QStates/css/body.css" rel="stylesheet" type="text/css"/>
+        <link href="/QStates/css/navbar.css" rel="stylesheet" type="text/css"/>
     </head>
     <body>
         <div class="container-lg">

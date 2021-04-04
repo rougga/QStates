@@ -3,22 +3,20 @@ package main.servlets;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.Objects;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.util.UUID;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import ma.rougga.nst.controller.TaskController;
-import ma.rougga.nst.modal.Task;
 import main.CfgHandler;
 import main.PgConnection;
 import org.apache.commons.lang3.StringUtils;
 
-public class AddTask extends HttpServlet {
+public class DeleteTask extends HttpServlet {
 
     @Override
-    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         response.setContentType("text/html;charset=UTF-8");
         request.setCharacterEncoding("UTF-8");
         //loging test
@@ -27,16 +25,17 @@ public class AddTask extends HttpServlet {
         } else {
             // admin permition test
             if (Objects.equals(request.getSession().getAttribute("grade"), "adm")) {
-                String taskName = request.getParameter("taskName");
-                String serviceId = request.getParameter("serviceId");
+                String id = request.getParameter("id");
+                System.err.println(id);
                 //empty check
-                if (StringUtils.isNoneBlank(taskName, serviceId)) {
-                    System.err.println("Name:" + taskName + " Id: " + serviceId);
+                if (StringUtils.isNotBlank(id)) {
                     try {
-                        new TaskController(new PgConnection().getStatement()).add(
-                                new Task(taskName, serviceId)
-                        );
-                        response.sendRedirect(CfgHandler.PAGE_TASK + "?err=Tache%20et%20ajouter");
+                        //supprission d'une tache
+                        if (new TaskController(new PgConnection().getStatement()).deleteById(UUID.fromString(id))) {
+                            response.sendRedirect(CfgHandler.PAGE_TASK + "?err=Tache%20et%20supprime");
+                        }else{
+                            response.sendRedirect(CfgHandler.PAGE_TASK + "?err=Erreur");
+                        }
                     } catch (ClassNotFoundException | SQLException ex) {
                         response.sendRedirect(CfgHandler.PAGE_TASK + "?err=" + ex.getMessage());
                     }
@@ -45,5 +44,7 @@ public class AddTask extends HttpServlet {
                 response.sendRedirect(CfgHandler.PAGE_HOME);
             }
         }
+
     }
+
 }

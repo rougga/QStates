@@ -43,7 +43,8 @@ public class CfgHandler {
     private final String aplTempExcel = "\\cfg\\excel\\apltemp.xlsx";
     //Pages
 
-    public static String PAGE_HOME = "/QStates/index.jsp";
+    public static String PAGE_HOME = "/QStates/home.jsp";
+    public static String PAGE_REPORT = "/QStates/report.jsp";
     public static String PAGE_TASK = "/QStates/setting/taches.jsp";
 
     //declaration        

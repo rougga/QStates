@@ -1,3 +1,4 @@
+
 <%@page import="java.sql.Statement"%>
 <%@page import="ma.rougga.nst.controller.ServiceController"%>
 <%@page import="ma.rougga.nst.modal.Service"%>
@@ -50,7 +51,7 @@
                     <div class="  float-right m-2">
                         <a class="btn btn-success" id="tacheAdd" data-toggle="modal" data-target="#tacheModal"><img src="/QStates/img/icon/plus.png"> Ajouter</a>
                     </div>
-                    <table class="table table-bordered table-light   table-responsive-sm " id="tacheTable">
+                    <table class="table table-bordered table-light table-bordered table-striped border-dark" id="tacheTable">
                         <thead class="appColor ">
                             <tr>
                                 <th scope="col">Service</th>
@@ -58,7 +59,7 @@
                                 <th></th>
                             </tr>
                         </thead>
-                        <tbody class="">
+                        <tbody class=" border-dark">
                             <%
                                 Statement stm = new PgConnection().getStatement();
                                 ArrayList<Task> taches = new TaskController(stm).getTasks();
@@ -67,11 +68,11 @@
                             %>
 
                             <tr>
-                                <td><%= new ServiceController(stm).getById(tache.getId_service()) %></td>
-                                <td><%= tache.getName() %></td>
-                                <td>
+                                <th class="font-weight-bold db text-center align-middle border-dark" data-id="<%=tache.getId_service()%>"><%= new ServiceController(stm).getById(tache.getId_service()).getName() %></th>
+                                <td class="font-weight-bold border-dark"><%= tache.getName() %></td>
+                                <td class=" border-dark">
                                     <a class="btn btn-info disabled" id="tacheEdit" href="#" title="Editer"><img src="/QStates/img/icon/pencil.png"></a>
-                                    <a class="btn btn-danger" id="tacheDlt" href="#" title="Supprimer"><img src="/QStates/img/icon/trash.png"></a>
+                                    <a class="btn btn-danger" id="tacheDlt" href="/QStates/DeleteTask?id=<%=tache.getId().toString()%>" title="Supprimer"><img src="/QStates/img/icon/trash.png"></a>
                                 </td>
                             </tr>
 
@@ -97,13 +98,13 @@
                                     <div class="form-group">
                                         <label for="serviceName">Service:</label>
                                         <input class="form-control" type="hidden" id="servicePlace">
-                                        <select class="form-control" id="serviceName" name="service" required>
-
+                                        <select class="form-control" id="serviceName" name="serviceId" required>
                                             <option selected disabled value="0">Sélectionner service:</option>
                                             <%   
+                                                stm = new PgConnection().getStatement();
                                                 for(Service service : new ServiceController(stm).getAll()){
                                             %>
-                                            <option id="<%=service.getId()%>"><%=service.getName()%></option>
+                                            <option value="<%=service.getId()%>"><%=service.getName()%></option>
                                             <%
                                                 }
                                             %>
@@ -126,4 +127,21 @@
             </div>
         </div>
     </body>
+    <script>
+        var rowSpan = function() {
+        var elements = $('.db');
+        var ids = [];
+        for (var i = 0; i < elements.length; i++) {
+            if (ids.indexOf($(elements[i]).attr("data-id")) === -1) {
+                ids.push($(elements[i]).attr("data-id"));
+            } else {
+                $(elements[i]).hide();
+            }
+        }
+        for (var i = 0; i < ids.length; i++) {
+            $('.db[data-id=' + ids[i] + ']:first').attr("rowspan", $('.db[data-id=' + ids[i] + ']').length);
+        }
+        };
+        rowSpan();
+    </script>
 </html>

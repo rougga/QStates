@@ -36,6 +36,10 @@
         <servlet-name>AddTask</servlet-name>
         <servlet-class>main.servlets.AddTask</servlet-class>
     </servlet>
+    <servlet>
+        <servlet-name>DeleteTask</servlet-name>
+        <servlet-class>main.servlets.DeleteTask</servlet-class>
+    </servlet>
     <servlet-mapping>
         <servlet-name>Settings</servlet-name>
         <url-pattern>/Settings</url-pattern>
@@ -101,6 +105,10 @@
     <servlet-mapping>
         <servlet-name>AddTask</servlet-name>
         <url-pattern>/addTask</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>DeleteTask</servlet-name>
+        <url-pattern>/DeleteTask</url-pattern>
     </servlet-mapping>
     <session-config>
         <session-timeout>
