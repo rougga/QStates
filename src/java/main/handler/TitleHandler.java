@@ -223,4 +223,13 @@ public class TitleHandler {
             return title;
         }
     }
+
+    public String getTaskTitle() {
+         String title = getTitle("tch");
+        if (title == null) {
+            return String.valueOf("Rapport des Taches");
+        } else {
+            return title;
+        }
+    }
 }
