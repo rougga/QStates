@@ -63,7 +63,7 @@ public class TableGenerator {
         this.aplCols = new String[]{"Site", "Service", "Numéro", "Heure edition ticket", "Heure appel", "Heure début de traitement", "Heure fin traitement", "Guichet", "Employé", "Durée attente", "Durée traitement", "Statut"};
         this.glaCols = new String[]{"Site", "Service", "0-15s", "15s-30s", "30s-1min", "1min-1min30s", "1min30s-2min", "2-5min", "0-5min", "5-10min", "10-20min", "20-30min", "30-45min", "45-50min", "> 50min", "Total"};
         this.gltCols = new String[]{"Site", "Service", "0-15s", "15s-30s", "30s-1min", "1min-1min30s", "1min30s-2min", "2-5min", ">5min", "5-10min", "10-20min", "20-30min", "30-45min", "45-50min", "> 50min", "Total"};
-        this.taskCols = new String[]{"Site", "Service", "Tache", "Nb. Traités","Qte. Traités","Nb. Traités <1mn","Traités<1mn/Nb. Tickets(%)", "Moyenne d'attente", ">Cible", "%Cible", "Moyenne Traitement", ">Cible", "%Cible"};
+        this.taskCols = new String[]{"Site", "Service", "Tache", "Nb. Traités","Qte. Traités","Nb. Traités <1mn","Traités<1mn/Qte. Traités(%)", "Moyenne d'attente", "Moyenne Traitement"};
         this.table = new ArrayList<>();
         this.subTotal = new ArrayList<>();
     }

@@ -129,7 +129,8 @@
                     sgch: ".0,.1,.2,.3,.4",
                     apl: ".0,.1,.2,.7,.8,.9,.10,.11",
                     gla: ".0,.1,.8,.9,.10,.11,.12,.13,.14,.15",
-                    glt: ".0,.1,.2,.3,.4,.5,.6,.7,.8,.15"
+                    glt: ".0,.1,.2,.3,.4,.5,.6,.7,.8,.15",
+                    tch:".0,.1,.2,.3,.4,.7,.8"
                 };
                 var colsToHide = {
                     glt: ".8",
@@ -188,8 +189,11 @@
                         case "glt":
                             $(colsToShow.glt).show();
                             break;
+                        case "glt":
+                            $(colsToShow.glt).show();
+                            break;
                         default :
-                            $(colsToShow.gbl).show();
+                            $(colsToShow.tch).show();
                             break;
                     }
                     ;
