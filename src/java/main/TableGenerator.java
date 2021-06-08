@@ -63,7 +63,7 @@ public class TableGenerator {
         this.aplCols = new String[]{"Site", "Service", "Numéro", "Heure edition ticket", "Heure appel", "Heure début de traitement", "Heure fin traitement", "Guichet", "Employé", "Durée attente", "Durée traitement", "Statut"};
         this.glaCols = new String[]{"Site", "Service", "0-15s", "15s-30s", "30s-1min", "1min-1min30s", "1min30s-2min", "2-5min", "0-5min", "5-10min", "10-20min", "20-30min", "30-45min", "45-50min", "> 50min", "Total"};
         this.gltCols = new String[]{"Site", "Service", "0-15s", "15s-30s", "30s-1min", "1min-1min30s", "1min30s-2min", "2-5min", ">5min", "5-10min", "10-20min", "20-30min", "30-45min", "45-50min", "> 50min", "Total"};
-        this.taskCols = new String[]{"Site", "Service", "Tache", "Nb. Traités","Qte. Traités","Nb. Traités <1mn","Traités<1mn/Qte. Traités(%)", "Moyenne d'attente", "Moyenne Traitement"};
+        this.taskCols = new String[]{"Site", "Service", "Tache", "Nb. Tickets Traités", "Qte. Traités"};
         this.table = new ArrayList<>();
         this.subTotal = new ArrayList<>();
     }
@@ -1991,207 +1991,66 @@ public class TableGenerator {
         CfgHandler cfg = new CfgHandler(request);
         String dateCon = " and to_date(to_char(t2.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') ";
 
-        String gblSQL2 = "SELECT "
-                + " g1.BIZ_TYPE_ID,"
-                + " G1.NAME,"
-                + " G1.NB_T,"
-                + " G1.NB_TT, "
-                + "G1.NB_A,"
-                + " G1.NB_TL1,"
-                + " G1.NB_SA,"
-                + " CASE "
-                + "WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric "
-                + "ELSE CAST((G1.NB_A::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2)) "
-                + "END AS PERAPT,"
-                + " CASE"
-                + " WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric"
-                + " ELSE CAST((G1.NB_TL1::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2)) "
-                + "END AS PERTL1pt,"
-                + " CASE WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric "
-                + "ELSE CAST((G1.NB_SA::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2)) "
-                + "END AS PERSAPT , "
-                + "G1.AVGSEC_A, G1.avgsec_T "
+        String gblSQL2 = "select "
+                + "b.id as biz_id,"
+                + "tt.id_task,"
+                + "b.name as service,"
+                + "tch.name as task,"
+                + "(SELECT COUNT(*) FROM rougga_ticket_task tt2 , t_ticket t2 WHERE tt2.id_task=tt.id_task and tt2.id_ticket=t2.id "+dateCon+" ) AS NB_TT,"
+                + "(SELECT sum(tt2.quantity) FROM rougga_ticket_task tt2 , t_ticket t2 WHERE tt2.id_task=tt.id_task and tt2.id_ticket=t2.id "+dateCon+" ) AS NB_QTT "
                 + "from "
-                + "( select "
-                + "t1.biz_type_id,"
-                + " b.name, "
-                + "(SELECT COUNT(*) FROM T_TICKET T2 WHERE T2.BIZ_TYPE_ID = T1.BIZ_TYPE_ID " + dateCon + " ) AS NB_T,"
-                + " (SELECT COUNT(*) FROM T_TICKET T2 WHERE T2.BIZ_TYPE_ID = T1.BIZ_TYPE_ID AND T2.STATUS = 4 " + dateCon + " ) AS NB_TT,"
-                + " (SELECT COUNT(*) FROM T_TICKET T2 WHERE T2.BIZ_TYPE_ID = T1.BIZ_TYPE_ID AND T2.STATUS = 2 " + dateCon + " ) AS NB_A,"
-                + " (SELECT COUNT(*) FROM T_TICKET T2 WHERE T2.BIZ_TYPE_ID = T1.BIZ_TYPE_ID AND DATE_PART('epoch'::text, T2.FINISH_TIME - T2.START_TIME)::numeric / 60::numeric <= 1 AND T2.STATUS = 4 " + dateCon + " ) AS NB_TL1,"
-                + " (SELECT COUNT(*) FROM T_TICKET T2 WHERE T2.BIZ_TYPE_ID = T1.BIZ_TYPE_ID AND T2.STATUS = 0 " + dateCon + " ) AS NB_SA,"
-                + " (SELECT AVG(DATE_PART('epoch'::text, T2.CALL_TIME - T2.TICKET_TIME)::numeric) FROM T_TICKET T2 WHERE T2.BIZ_TYPE_ID = T1.BIZ_TYPE_ID and T2.call_time is not null  " + dateCon + " ) AS AVGSEC_A, "
-                + " (SELECT AVG(DATE_PART('epoch'::text, T2.FINISH_TIME - T2.START_TIME)::numeric) FROM T_TICKET T2 WHERE T2.BIZ_TYPE_ID = T1.BIZ_TYPE_ID AND T2.STATUS = 4 " + dateCon + " ) AS AVGSEC_T FROM T_TICKET T1, T_BIZ_TYPE B WHERE T1.BIZ_TYPE_ID = B.ID AND TO_DATE(TO_CHAR(T1.TICKET_TIME,'YYYY-MM-DD'),'YYYY-MM-DD') BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') GROUP BY T1.BIZ_TYPE_ID, B.NAME ) G1 ;";
+                + "rougga_task tch, rougga_ticket_task tt, t_biz_type b , t_ticket t "
+                + "where "
+                + "tch.id_service=b.id and tt.id_task=tch.id and tt.id_ticket = t.id and to_date(to_char(t.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') "
+                + "group by biz_id, id_task, service , task "
+                + "order by service "
+                + ";";
 
-        String subTotalSQL = "SELECT G1.NB_T, "
-                + "G1.NB_TT, "
-                + "G1.NB_A, "
-                + "G1.NB_TL1, "
-                + "G1.NB_SA, "
-                + "CASE "
-                + "WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric "
-                + "ELSE CAST((G1.NB_A::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2)) "
-                + "END AS PERAPT, "
-                + "CASE "
-                + "WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric "
-                + "ELSE CAST((G1.NB_TL1::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2)) "
-                + "END AS PERTL1PT, "
-                + "CASE "
-                + "WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric "
-                + "ELSE CAST((G1.NB_SA::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2)) "
-                + "END AS PERSAPT, "
-                + "G1.AVGSEC_A, "
-                + "G1.AVGSEC_T "
-                + "FROM "
-                + "(SELECT "
-                + "(SELECT COUNT(*) "
-                + "FROM T_TICKET T2 "
-                + "WHERE 1 = 1 "
-                + " " + dateCon + " ) AS NB_T, "
-                + " "
-                + "(SELECT COUNT(*) "
-                + "FROM T_TICKET T2 "
-                + "WHERE T2.STATUS = 4 "
-                + " " + dateCon + " ) AS NB_TT, "
-                + " "
-                + "(SELECT COUNT(*) "
-                + "FROM T_TICKET T2 "
-                + "WHERE T2.STATUS = 2 "
-                + " " + dateCon + " ) AS NB_A, "
-                + " "
-                + "(SELECT COUNT(*) "
-                + "FROM T_TICKET T2 "
-                + "WHERE DATE_PART('epoch'::text, T2.FINISH_TIME - T2.START_TIME)::numeric / 60::numeric <= 1 "
-                + "AND T2.STATUS = 4 "
-                + " " + dateCon + " ) AS NB_TL1, "
-                + " "
-                + "(SELECT COUNT(*) "
-                + "FROM T_TICKET T2 "
-                + "WHERE T2.STATUS = 0 "
-                + " " + dateCon + " ) AS NB_SA, "
-                + " "
-                + "(SELECT AVG(DATE_PART('epoch'::text, T2.CALL_TIME - T2.TICKET_TIME)::numeric) "
-                + "FROM T_TICKET T2 "
-                + "WHERE T2.call_time is not null "
-                + " " + dateCon + " ) AS AVGSEC_A, "
-                + " "
-                + "(SELECT AVG(DATE_PART('epoch'::text, T2.FINISH_TIME - T2.START_TIME)::numeric) "
-                + "FROM T_TICKET T2 "
-                + "WHERE T2.STATUS = 4 "
-                + " " + dateCon + " ) AS AVGSEC_T "
-                + "FROM T_TICKET T1 "
-                + "WHERE TO_DATE(TO_CHAR(T1.TICKET_TIME,'YYYY-MM-DD'),'YYYY-MM-DD') BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') limit 1 ) G1 ;";
+        String subTotalSQL = "";
         PgConnection con = new PgConnection();
         ResultSet r = con.getStatement().executeQuery(gblSQL2);
         table.clear();
         while (r.next()) {
             ArrayList<String> row = new ArrayList<>();
-            String id = r.getString("biz_type_id");
-            row.add(r.getString("name"));
-            row.add(r.getLong("nb_t") + "");
-            row.add(r.getLong("nb_tt") + "");
-            row.add(r.getLong("nb_a") + "");
-            row.add(r.getLong("nb_tl1") + "");
-            row.add(r.getLong("nb_sa") + "");
-            row.add(r.getFloat("perApT") + "%");
-            row.add(r.getFloat("PERTL1pt") + "%");
-            row.add(r.getFloat("perSApT") + "%");
-            row.add(getFormatedTime(r.getFloat("avgSec_A")));
-
-            int cibleA = cfg.getCibleA(id);
-            int cibleT = cfg.getCibleT(id);
-
-            String cibleSQL = "SELECT G1.BIZ_TYPE_ID, "
-                    + "G1.NAME, "
-                    + "G1.NB_TT, "
-                    + "G1.NB_CA, "
-                    + "CASE "
-                    + "WHEN G1.NB_TT::numeric = 0 "
-                    + "OR G1.NB_CA::numeric = 0 THEN 0 "
-                    + "ELSE CAST((G1.NB_CA::numeric / G1.NB_TT::numeric) * 100::numeric AS DECIMAL(10,2)) "
-                    + "END AS PERCAPT, "
-                    + "G1.NB_CT, "
-                    + "CASE "
-                    + "WHEN G1.NB_TT::numeric = 0 "
-                    + "OR G1.NB_CT::numeric = 0 THEN 0 "
-                    + "ELSE CAST((G1.NB_CT::numeric / G1.NB_TT::numeric) * 100::numeric AS DECIMAL(10,2)) "
-                    + "END AS PERCTPT "
-                    + "FROM "
-                    + "(SELECT B.NAME, "
-                    + "T1.BIZ_TYPE_ID, "
-                    + "(SELECT COUNT(*) "
-                    + "FROM T_TICKET T2 "
-                    + "WHERE T2.BIZ_TYPE_ID = T1.BIZ_TYPE_ID "
-                    + "AND T2.STATUS = 4  " + dateCon + " ) AS NB_TT, "
-                    + " "
-                    + "(SELECT COUNT(*) "
-                    + "FROM T_TICKET T2 "
-                    + "WHERE T2.BIZ_TYPE_ID = T1.BIZ_TYPE_ID "
-                    + "AND DATE_PART('epoch'::text, T2.CALL_TIME - T2.TICKET_TIME)::numeric >  " + cibleA + " "
-                    + "AND T2.STATUS = 4  " + dateCon + " ) AS NB_CA, "
-                    + " "
-                    + "(SELECT COUNT(*) "
-                    + "FROM T_TICKET T2 "
-                    + "WHERE T2.BIZ_TYPE_ID = T1.BIZ_TYPE_ID "
-                    + "AND DATE_PART('epoch'::text, T2.FINISH_TIME - T2.START_TIME)::numeric >  " + cibleT + " "
-                    + "AND T2.STATUS = 4  " + dateCon + ") AS NB_CT "
-                    + "FROM T_TICKET T1, "
-                    + "T_BIZ_TYPE B "
-                    + "WHERE T1.BIZ_TYPE_ID = B.ID "
-                    + " AND TO_DATE(TO_CHAR(T1.TICKET_TIME,'YYYY-MM-DD'),'YYYY-MM-DD') BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') "
-                    + "AND T1.BIZ_TYPE_ID = '" + id + "' "
-                    + "GROUP BY T1.BIZ_TYPE_ID, "
-                    + "B.NAME) G1 ; "
-                    + "";
-            ResultSet cib = con.getStatement().executeQuery(cibleSQL);
-            if (cib.next()) {
-                row.add(cib.getLong("nb_ca") + "");
-                row.add(cib.getFloat("percapt") + "%");
-                row.add(getFormatedTime(r.getFloat("avgSec_T")));
-                row.add(cib.getLong("nb_ct") + "");
-                row.add(cib.getFloat("perctpt") + "%");
-            } else {
-                row.add("--");
-                row.add("--%");
-                row.add(getFormatedTime(r.getFloat("avgSec_T")));
-                row.add("--");
-                row.add("-%");
-            }
-
+//            row.add(r.getString("biz_id"));
+//            row.add(r.getString("id_task"));
+            row.add(r.getString("service"));
+            row.add(r.getString("task"));
+            row.add(r.getLong("NB_TT") + "");
+            row.add(r.getLong("NB_QTT") + "");
             table.add(row);
         }
-        r = con.getStatement().executeQuery(subTotalSQL);
-        while (r.next()) {
-            ArrayList<String> row = new ArrayList<>();
-            row.add("Sous-Totale");
-            row.add(r.getLong("nb_t") + "");
-            row.add(r.getLong("nb_tt") + "");
-            row.add(r.getLong("nb_a") + "");
-            row.add(r.getLong("nb_tl1") + "");
-            row.add(r.getLong("nb_sa") + "");
-            row.add(r.getFloat("perApT") + "%");
-            row.add(r.getFloat("PERTL1pt") + "%");
-            row.add(r.getFloat("perSApT") + "%");
-            row.add(getFormatedTime(r.getFloat("avgSec_A")));
-            row.add("--");
-            row.add("--%");
-            row.add(getFormatedTime(r.getFloat("avgSec_T")));
-            row.add("--");
-            row.add("-%");
-            table.add(row);
-        }
+       // r = con.getStatement().executeQuery(subTotalSQL);
+//        while (r.next()) {
+//            ArrayList<String> row = new ArrayList<>();
+//            row.add("Sous-Totale");
+//            row.add(r.getLong("nb_t") + "");
+//            row.add(r.getLong("nb_tt") + "");
+//            row.add(r.getLong("nb_a") + "");
+//            row.add(r.getLong("nb_tl1") + "");
+//            row.add(r.getLong("nb_sa") + "");
+//            row.add(r.getFloat("perApT") + "%");
+//            row.add(r.getFloat("PERTL1pt") + "%");
+//            row.add(r.getFloat("perSApT") + "%");
+//            row.add(getFormatedTime(r.getFloat("avgSec_A")));
+//            row.add("--");
+//            row.add("--%");
+//            row.add(getFormatedTime(r.getFloat("avgSec_T")));
+//            row.add("--");
+//            row.add("-%");
+//            table.add(row);
+//        }
 
         con.closeConnection();
         return table;
     }
 
-    
     public SimpleDateFormat getFormat() {
         return format;
     }
 
     public Map getTable(HttpServletRequest request, String d1, String d2, String db, String type) throws IOException, ClassNotFoundException, FileNotFoundException, ParserConfigurationException, SAXException, Exception {
-       
+
         type = (type == null) ? "gbl" : type.toLowerCase().trim();
         Map data = new HashMap();
         List<ArrayList<String>> T;
@@ -2205,123 +2064,123 @@ public class TableGenerator {
                 setDefaultHTML();
                 break;
             case "emp":
-                T = generateEmpTable(request, request.getParameter("date1"), request.getParameter("date2"),String.valueOf(request.getSession().getAttribute("db")));
+                T = generateEmpTable(request, request.getParameter("date1"), request.getParameter("date2"), String.valueOf(request.getSession().getAttribute("db")));
                 setTitle(th.getEmpTitle());
                 setCols(getEmpCols());
                 setType(type);
                 setDefaultHTML();
                 break;
             case "empser":
-                T = generateEmpServiceTable(request, request.getParameter("date1"), request.getParameter("date2"),String.valueOf(request.getSession().getAttribute("db")));
+                T = generateEmpServiceTable(request, request.getParameter("date1"), request.getParameter("date2"), String.valueOf(request.getSession().getAttribute("db")));
                 setTitle(th.getEmpSerTitle());
                 setCols(getEmpServiceCols());
                 setType(type);
                 setDefaultHTML();
                 break;
             case "gch":
-                T = generateGchTable(request, request.getParameter("date1"), request.getParameter("date2"),String.valueOf(request.getSession().getAttribute("db")));
+                T = generateGchTable(request, request.getParameter("date1"), request.getParameter("date2"), String.valueOf(request.getSession().getAttribute("db")));
                 setTitle(th.getGchTitle());
                 setCols(getGchCols());
                 setType(type);
                 setDefaultHTML();
                 break;
             case "gchserv":
-                T = generateGchServiceTable(request, request.getParameter("date1"), request.getParameter("date2"),String.valueOf(request.getSession().getAttribute("db")));
+                T = generateGchServiceTable(request, request.getParameter("date1"), request.getParameter("date2"), String.valueOf(request.getSession().getAttribute("db")));
                 setTitle(th.getGchServTitle());
                 setCols(getGchServiceCols());
                 setType(type);
                 setDefaultHTML();
                 break;
             case "ndt":
-                generateNdtChart(request, request.getParameter("date1"), request.getParameter("date2"),String.valueOf(request.getSession().getAttribute("db")));
-                T = generateNdtTable(request, request.getParameter("date1"), request.getParameter("date2"),String.valueOf(request.getSession().getAttribute("db")));
+                generateNdtChart(request, request.getParameter("date1"), request.getParameter("date2"), String.valueOf(request.getSession().getAttribute("db")));
+                T = generateNdtTable(request, request.getParameter("date1"), request.getParameter("date2"), String.valueOf(request.getSession().getAttribute("db")));
                 setTitle(th.getNdtTitle());
                 setCols(getNdtCols());
                 setType(type);
                 setChartHTML("false");
                 break;
             case "ndtt":
-                generateNdttChart(request, request.getParameter("date1"), request.getParameter("date2"),String.valueOf(request.getSession().getAttribute("db")));
-                T = generateNdttTable(request, request.getParameter("date1"), request.getParameter("date2"),String.valueOf(request.getSession().getAttribute("db")));
+                generateNdttChart(request, request.getParameter("date1"), request.getParameter("date2"), String.valueOf(request.getSession().getAttribute("db")));
+                T = generateNdttTable(request, request.getParameter("date1"), request.getParameter("date2"), String.valueOf(request.getSession().getAttribute("db")));
                 setTitle(th.getNdttTitle());
                 setCols(getNdtCols());
                 setType(type);
                 setChartHTML("false");
                 break;
             case "ndta":
-                generateNdtaChart(request, request.getParameter("date1"), request.getParameter("date2"),String.valueOf(request.getSession().getAttribute("db")));
-                T = generateNdtaTable(request, request.getParameter("date1"), request.getParameter("date2"),String.valueOf(request.getSession().getAttribute("db")));
+                generateNdtaChart(request, request.getParameter("date1"), request.getParameter("date2"), String.valueOf(request.getSession().getAttribute("db")));
+                T = generateNdtaTable(request, request.getParameter("date1"), request.getParameter("date2"), String.valueOf(request.getSession().getAttribute("db")));
                 setTitle(th.getNdtaTitle());
                 setCols(getNdtCols());
                 setType(type);
                 setChartHTML("false");
                 break;
             case "ndtsa":
-                generateNdtsaChart(request, request.getParameter("date1"), request.getParameter("date2"),String.valueOf(request.getSession().getAttribute("db")));
-                T = generateNdtsaTable(request, request.getParameter("date1"), request.getParameter("date2"),String.valueOf(request.getSession().getAttribute("db")));
+                generateNdtsaChart(request, request.getParameter("date1"), request.getParameter("date2"), String.valueOf(request.getSession().getAttribute("db")));
+                T = generateNdtsaTable(request, request.getParameter("date1"), request.getParameter("date2"), String.valueOf(request.getSession().getAttribute("db")));
                 setTitle(th.getNdtsaTitle());
                 setCols(getNdtCols());
                 setType(type);
                 setChartHTML("false");
                 break;
             case "cnx":
-                T = generateCnxTable(request, request.getParameter("date1"), request.getParameter("date2"),String.valueOf(request.getSession().getAttribute("db")));
+                T = generateCnxTable(request, request.getParameter("date1"), request.getParameter("date2"), String.valueOf(request.getSession().getAttribute("db")));
                 setTitle(th.getCnxTitle());
                 setCols(getCnxCols());
                 setType(type);
                 setDateHTML();
                 break;
             case "remp":
-                T = generateEmpTable(request, request.getParameter("date1"), request.getParameter("date2"),String.valueOf(request.getSession().getAttribute("db")));
+                T = generateEmpTable(request, request.getParameter("date1"), request.getParameter("date2"), String.valueOf(request.getSession().getAttribute("db")));
                 setTitle(th.getRempTitle());
                 setCols(getEmpCols());
                 setType(type);
                 setDateHTML();
                 break;
             case "ser":
-                T = generateSerTable(request, request.getParameter("date1"), request.getParameter("date2"),String.valueOf(request.getSession().getAttribute("db")));
+                T = generateSerTable(request, request.getParameter("date1"), request.getParameter("date2"), String.valueOf(request.getSession().getAttribute("db")));
                 setTitle(th.getSerTitle());
                 setCols(getSerCols());
                 setType(type);
                 setTimerHTML();
                 break;
             case "sgch":
-                T = generateSgchTable(request, request.getParameter("date1"), request.getParameter("date2"),String.valueOf(request.getSession().getAttribute("db")));
+                T = generateSgchTable(request, request.getParameter("date1"), request.getParameter("date2"), String.valueOf(request.getSession().getAttribute("db")));
                 setTitle(th.getSgchTitle());
                 setCols(getSgchCols());
                 setType(type);
                 setTimerHTML();
                 break;
             case "apl":
-                T = generateAplTable(request, request.getParameter("date1"), request.getParameter("date2"),String.valueOf(request.getSession().getAttribute("db")));
+                T = generateAplTable(request, request.getParameter("date1"), request.getParameter("date2"), String.valueOf(request.getSession().getAttribute("db")));
                 setTitle(th.getAplTitle());
                 setCols(getAplCols());
                 setType(type);
                 setDateHTML();
                 break;
             case "gla":
-                T = generateGlaTable(request, request.getParameter("date1"), request.getParameter("date2"),String.valueOf(request.getSession().getAttribute("db")));
+                T = generateGlaTable(request, request.getParameter("date1"), request.getParameter("date2"), String.valueOf(request.getSession().getAttribute("db")));
                 setTitle(th.getGlaTitle());
                 setCols(getGlaCols());
                 setType(type);
                 setChartHTML("true");
                 break;
             case "glt":
-                T = generateGltTable(request, request.getParameter("date1"), request.getParameter("date2"),String.valueOf(request.getSession().getAttribute("db")));
+                T = generateGltTable(request, request.getParameter("date1"), request.getParameter("date2"), String.valueOf(request.getSession().getAttribute("db")));
                 setTitle(th.getGltTitle());
                 setCols(getGltCols());
                 setType(type);
                 setChartHTML("true");
                 break;
             case "tch":
-                T = generateGltTable(request, request.getParameter("date1"), request.getParameter("date2"),String.valueOf(request.getSession().getAttribute("db")));
+                T = generateTaskTable(request, request.getParameter("date1"), request.getParameter("date2"), String.valueOf(request.getSession().getAttribute("db")));
                 setTitle(th.getTaskTitle());
                 setCols(getTaskCols());
                 setType(type);
-                setDefaultHTML();
+                setDateHTML();
                 break;
             default:
-                T = generateGblTable(request, request.getParameter("date1"), request.getParameter("date2"),String.valueOf(request.getSession().getAttribute("db")));
+                T = generateGblTable(request, request.getParameter("date1"), request.getParameter("date2"), String.valueOf(request.getSession().getAttribute("db")));
                 setTitle(th.getGblTitle());
                 setCols(getGblCols());
                 setType(type);
@@ -2591,7 +2450,6 @@ public class TableGenerator {
         this.bottomHTML = "";
     }
 
-    
     public void setEmptyHTML() {
         this.topHTML = "<div class='div-wrapper d-flex justify-content-center align-items-center'>"
                 + "</div>";
@@ -2752,7 +2610,7 @@ public class TableGenerator {
     }
 
     private String[] getTaskCols() {
-      return this.taskCols;
+        return this.taskCols;
     }
 
 }
