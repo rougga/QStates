@@ -437,7 +437,7 @@ public class TableGenerator {
         String dateCon = " and to_date(to_char(t2.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') ";
 
         String empSQL = "select g1.deal_user, g1.username, g1.service, g1.biz_type_id, g1.nb_t, g1.nb_tt, g1.nb_ta, g1.nb_ttl1, g1.nb_tsa, g1.avgsec_a, g1.avgsec_t,  CASE WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric  ELSE CAST((G1.NB_tA::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2)) END AS PERAPT, CASE WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric                   ELSE CAST((G1.NB_tTL1::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2)) END AS PERTL1PT, CASE WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric ELSE CAST((G1.NB_tSA::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2))  END AS PERSAPT from "
-                + " (select t1.deal_user,  u.name as username, t1.biz_type_id, b.name as service,"
+                + " (select t1.deal_user,  u.name as username, t1.biz_type_id, b.name as service ,"
                 + "(select count(*) from t_ticket t2 where t2.deal_user=t1.deal_user and t2.biz_type_id=t1.biz_type_id " + dateCon + ") as nb_t, "
                 + "(select count(*) from t_ticket t2 where t2.deal_user=t1.deal_user and t2.biz_type_id=t1.biz_type_id and t2.status=4    " + dateCon + "  ) as nb_tt, "
                 + "(select count(*) from t_ticket t2 where t2.deal_user=t1.deal_user and t2.biz_type_id=t1.biz_type_id and t2.status=2   " + dateCon + "   ) as nb_ta, "
@@ -447,7 +447,7 @@ public class TableGenerator {
                 + "(SELECT AVG(DATE_PART('epoch'::text, T2.FINISH_TIME - T2.START_TIME)::numeric) FROM T_TICKET T2 WHERE t2.deal_user=t1.deal_user and t2.biz_type_id=t1.biz_type_id and T2.STATUS = 4   " + dateCon + " ) AS AVGSEC_T "
                 + "  from t_ticket t1 , t_biz_type b,t_user u "
                 + "where t1.deal_user is not null and t1.biz_type_id=b.id and t1.deal_user=u.id and to_date(to_char(t1.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') "
-                + "group by t1.deal_user,u.name,t1.biz_type_id,b.name) g1;";
+                + "group by t1.deal_user,u.name,t1.biz_type_id,b.name order by username , service) g1;";
 
         String subTotalSQL = "SELECT G1.NB_T, "
                 + "G1.NB_TT, "
