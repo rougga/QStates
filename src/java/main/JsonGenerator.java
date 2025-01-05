@@ -134,7 +134,7 @@ public class JsonGenerator {
             String id = r.getString("biz_type_id");
             service.put("id", id);
             service.put("name", r.getString("name"));
-            data.put("nb_t", (Object) r.getLong("nb_t"));
+            data.put("nb_t", r.getLong("nb_t"));
             data.put("nb_tt", r.getLong("nb_tt"));
             data.put("nb_a", r.getLong("nb_a"));
             data.put("nb_tl1", r.getLong("nb_tl1"));
@@ -142,7 +142,7 @@ public class JsonGenerator {
             data.put("perApT", r.getFloat("perApT"));
             data.put("PERTL1pt", r.getFloat("PERTL1pt"));
             data.put("perSApT", r.getFloat("perSApT"));
-            data.put("avgSec_A", getFormatedTime(r.getFloat("avgSec_A")));
+            data.put("avgSec_A", r.getFloat("avgSec_A"));
 
             int cibleA = cfg.getCibleA(id);
             int cibleT = cfg.getCibleT(id);
@@ -192,16 +192,16 @@ public class JsonGenerator {
             ResultSet cib = con.getStatement().executeQuery(cibleSQL);
             if (cib.next()) {
                 data.put("nb_ca", cib.getLong("nb_ca"));
-                data.put("percapt", cib.getFloat("percapt") + "%");
-                data.put("avgSec_T", getFormatedTime(r.getFloat("avgSec_T")));
+                data.put("percapt", cib.getFloat("percapt"));
+                data.put("avgSec_T", r.getFloat("avgSec_T"));
                 data.put("nb_ct", cib.getLong("nb_ct"));
-                data.put("perctpt", cib.getFloat("perctpt") + "%");
+                data.put("perctpt", cib.getFloat("perctpt"));
             } else {
-                data.put("nb_ca", "--");
-                data.put("percapt", "--%");
-                data.put("avgSec_T", getFormatedTime(r.getFloat("avgSec_T")));
-                data.put("nb_ct", "--");
-                data.put("perctpt", "-%");
+                data.put("nb_ca", 0);
+                data.put("percapt", 0.00);
+                data.put("avgSec_T", r.getFloat("avgSec_T"));
+                data.put("nb_ct", 0);
+                data.put("perctpt", 0.00);
             }
             service.put("data", data);
             table2.add(service);
