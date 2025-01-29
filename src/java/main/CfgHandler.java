@@ -5,8 +5,13 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.Objects;
 import java.util.Properties;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.servlet.http.HttpServletRequest;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -51,7 +56,37 @@ public class CfgHandler {
     private HttpServletRequest request;
     private FileReader FR = null;
     private Properties prop = null;
+    
+    public final static SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
+    
+    public static String getFormatedDateAsString(Date date) {
+        SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        if (date != null) {
+            return format.format(date);
+        } else {
+            return null;
+        }
+        
+    }
 
+    public static Date getFormatedDateAsDate(String date) {
+        SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        if (date != null) {
+            try {
+                return format.parse(date);
+            } catch (ParseException ex) {
+                Logger.getLogger(CfgHandler.class.getName()).log(Level.SEVERE, null, ex);
+                return null;
+            }
+        } else {
+            return null;
+        }
+    }
+
+    
+    
+    
+    
     public CfgHandler(HttpServletRequest r) throws FileNotFoundException, IOException {
         this.request = r;
     }

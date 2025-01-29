@@ -2,21 +2,18 @@ package main.api;
 
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.nio.charset.StandardCharsets;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.util.Date;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import main.JsonGenerator;
+import main.CfgHandler;
+import main.Modal.Ticket;
 import main.PgConnection;
+import main.controller.TicketController;
 import org.json.simple.JSONObject;
 
-public class GetGlobaleTable extends HttpServlet {
+public class GetOldestTicketDate extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
@@ -25,21 +22,20 @@ public class GetGlobaleTable extends HttpServlet {
             response.setContentType("application/json");
             response.setCharacterEncoding("UTF-8");
             PrintWriter out = response.getWriter();
-            String date1 = request.getParameter("date1");
-            String date2 = request.getParameter("date2");
-            JSONObject result = null;
-            try {
-                result = new JsonGenerator().generateSimpleGblTable(date1, date2, request);
-            } catch (Exception e) {
-                out.print(e.getMessage());
+            JSONObject result = new JSONObject();
+            Ticket oldestTicket = new TicketController().getOldestTicket();
+            if (oldestTicket != null) {
+                Date oldestDate = oldestTicket.getTicket_time();
+                result.put("oldestDate", CfgHandler.getFormatedDateAsString(oldestDate));
+            } else {
+                result.put("oldestDate", null);
             }
+            System.err.println(oldestTicket.getId());
             out.print(result);
-
-        } catch (Exception ex) {
+        } catch (IOException ex) {
             System.err.println(ex.getMessage());
         }
 
-        
     }
 
 }

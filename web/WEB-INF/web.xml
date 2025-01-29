@@ -42,7 +42,7 @@
     </servlet>
     <servlet>
         <servlet-name>GetGlobaleTable</servlet-name>
-        <servlet-class>main.api.GetGlobaleTable</servlet-class>
+        <servlet-class>main.api.report.GetGlobaleTable</servlet-class>
         <init-param>
             <param-name>date1</param-name>
             <param-value>Value</param-value>
@@ -55,6 +55,10 @@
     <servlet>
         <servlet-name>OnlineCheck</servlet-name>
         <servlet-class>main.api.OnlineCheck</servlet-class>
+    </servlet>
+    <servlet>
+        <servlet-name>GetOldestTicketDate</servlet-name>
+        <servlet-class>main.api.GetOldestTicketDate</servlet-class>
     </servlet>
     <servlet-mapping>
         <servlet-name>Settings</servlet-name>
@@ -133,6 +137,10 @@
     <servlet-mapping>
         <servlet-name>OnlineCheck</servlet-name>
         <url-pattern>/onlinecheck</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>GetOldestTicketDate</servlet-name>
+        <url-pattern>/getoldestticketdate</url-pattern>
     </servlet-mapping>
     <session-config>
         <session-timeout>
