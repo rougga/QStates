@@ -1,11 +1,11 @@
 
+<%@page import="ma.rougga.qstates.modal.Service"%>
+<%@page import="ma.rougga.qstates.controller.ServiceController"%>
+<%@page import="ma.rougga.qstates.modal.Task"%>
+<%@page import="ma.rougga.qstates.controller.TaskController"%>
 <%@page import="java.sql.Statement"%>
-<%@page import="ma.rougga.nst.controller.ServiceController"%>
-<%@page import="ma.rougga.nst.modal.Service"%>
 <%@page import="ma.rougga.qstates.PgConnection"%>
 <%@page import="java.util.ArrayList"%>
-<%@page import="ma.rougga.nst.controller.TaskController"%>
-<%@page import="ma.rougga.nst.modal.Task"%>
 <%@page contentType="text/html" pageEncoding="UTF-8"%>
 <!DOCTYPE html>
 <html>
