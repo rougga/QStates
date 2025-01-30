@@ -83,7 +83,12 @@ public class CfgHandler {
         }
     }
 
-    
+    public static String getFormatedTime(Float Sec) {
+        int hours = (int) (Sec / 3600);
+        int minutes = (int) ((Sec % 3600) / 60);
+        int seconds = (int) (Sec % 60);
+        return String.format("%02d:%02d:%02d", hours, minutes, seconds);
+    }
     
     
     

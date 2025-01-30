@@ -2,7 +2,7 @@ package ma.rougga.qstates.controller;
 
 import java.sql.ResultSet;
 import ma.rougga.qstates.CfgHandler;
-import ma.rougga.qstates.Modal.Ticket;
+import ma.rougga.qstates.modal.Ticket;
 import ma.rougga.qstates.PgConnection;
 
 public class TicketController {

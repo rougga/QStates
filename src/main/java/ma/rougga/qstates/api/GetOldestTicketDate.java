@@ -8,7 +8,7 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import ma.rougga.qstates.CfgHandler;
-import ma.rougga.qstates.Modal.Ticket;
+import ma.rougga.qstates.modal.Ticket;
 import ma.rougga.qstates.PgConnection;
 import ma.rougga.qstates.controller.TicketController;
 import org.json.simple.JSONObject;

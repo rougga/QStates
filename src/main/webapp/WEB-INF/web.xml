@@ -60,6 +60,14 @@
         <servlet-name>GetOldestTicketDate</servlet-name>
         <servlet-class>ma.rougga.qstates.api.GetOldestTicketDate</servlet-class>
     </servlet>
+    <servlet>
+        <servlet-name>GetEmpTable</servlet-name>
+        <servlet-class>ma.rougga.qstates.api.report.GetEmpTable</servlet-class>
+    </servlet>
+    <servlet>
+        <servlet-name>GetEmpSerTable</servlet-name>
+        <servlet-class>ma.rougga.qstates.api.report.GetEmpSerTable</servlet-class>
+    </servlet>
     <servlet-mapping>
         <servlet-name>Settings</servlet-name>
         <url-pattern>/Settings</url-pattern>
@@ -141,6 +149,14 @@
     <servlet-mapping>
         <servlet-name>GetOldestTicketDate</servlet-name>
         <url-pattern>/getoldestticketdate</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>GetEmpTable</servlet-name>
+        <url-pattern>/getemptable</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>GetEmpSerTable</servlet-name>
+        <url-pattern>/getempsertable</url-pattern>
     </servlet-mapping>
     <session-config>
         <session-timeout>

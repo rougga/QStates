@@ -1,4 +1,4 @@
-package ma.rougga.qstates.Modal;
+package ma.rougga.qstates.modal;
 
 import java.util.Date;
 

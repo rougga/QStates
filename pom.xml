@@ -254,7 +254,12 @@
             <artifactId>itextpdf</artifactId>
             <version>5.0.6</version>
         </dependency>
-
+        
+        <dependency>
+            <groupId>com.zaxxer</groupId>
+            <artifactId>HikariCP</artifactId>
+            <version>2.5.1</version>
+        </dependency>
 
     </dependencies>
 

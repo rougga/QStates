@@ -7,6 +7,7 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import ma.rougga.qstates.JsonGenerator;
+import ma.rougga.qstates.controller.report.GblTableController;
 import org.json.simple.JSONObject;
 
 public class GetGlobaleTable extends HttpServlet {
@@ -22,7 +23,7 @@ public class GetGlobaleTable extends HttpServlet {
             String date2 = request.getParameter("date2");
             JSONObject result = null;
             try {
-                result = new JsonGenerator().generateSimpleGblTable(date1, date2, request);
+                result = new GblTableController().generateSimpleGblTable(date1, date2, request);
             } catch (Exception e) {
                 out.print(e.getMessage());
             }
