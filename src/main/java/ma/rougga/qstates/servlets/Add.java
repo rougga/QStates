@@ -10,6 +10,7 @@ import java.sql.SQLException;
 import java.util.Date;
 import java.util.Objects;
 import java.util.Properties;
+import java.util.UUID;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -23,6 +24,14 @@ import javax.xml.transform.stream.StreamResult;
 import ma.rougga.qstates.CfgHandler;
 import ma.rougga.qstates.PasswordAuthentication;
 import ma.rougga.qstates.PgConnection;
+import ma.rougga.qstates.controller.AgenceController;
+import ma.rougga.qstates.controller.CibleController;
+import ma.rougga.qstates.controller.ServiceController;
+import ma.rougga.qstates.controller.UtilisateurController;
+import ma.rougga.qstates.modal.Cible;
+import ma.rougga.qstates.modal.Service;
+import ma.rougga.qstates.modal.Utilisateur;
+import org.apache.commons.lang3.StringUtils;
 import org.w3c.dom.DOMException;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -47,133 +56,70 @@ public class Add extends HttpServlet {
                         String cibleAH = request.getParameter("cibleAH");
                         String cibleAM = request.getParameter("cibleAM");
                         String cibleAS = request.getParameter("cibleAS");
+
                         String cibleTH = request.getParameter("cibleTH");
                         String cibleTM = request.getParameter("cibleTM");
                         String cibleTS = request.getParameter("cibleTS");
+
                         String cibleD = request.getParameter("cibleD");
-                        if (id != null && cibleAH != null && cibleAM != null && cibleAS != null && cibleTH != null && cibleTM != null && cibleTS != null && cibleD != null) {
+                        if (StringUtils.isNoneBlank(id, cibleAH, cibleAM, cibleAS, cibleTH, cibleTM, cibleTS, cibleD)) {
 
                             if (!Objects.equals(id, "0")) {
                                 int cibleA = (Integer.parseInt(cibleAH) * 3600) + (Integer.parseInt(cibleAM) * 60) + Integer.parseInt(cibleAS);
                                 int cibleT = (Integer.parseInt(cibleTH) * 3600) + (Integer.parseInt(cibleTM) * 60) + Integer.parseInt(cibleTS);
 
-                                try {
-                                    CfgHandler cfg = new CfgHandler(request);
-                                    String path = cfg.getCibleFile();
-
-                                    Document doc = cfg.getXml(path);
-                                    Node cibles = doc.getFirstChild();
-
-                                    Element service = doc.createElement("service");
-                                    cibles.appendChild(service);
-
-                                    Element idE = doc.createElement("id");
-                                    idE.appendChild(doc.createTextNode(id));
-                                    service.appendChild(idE);
-
-                                    Element nameE = doc.createElement("name");
-                                    ResultSet r = new PgConnection().getStatement().executeQuery("SELECT name FROM t_biz_type where id ='" + id + "';");
-                                    if (r.next()) {
-
-                                        nameE.appendChild(doc.createTextNode(r.getString("name")));
-
-                                    } else {
-                                        nameE.appendChild(doc.createTextNode("ERREUR"));
-                                    }
-                                    service.appendChild(nameE);
-
-                                    Element cibleAE = doc.createElement("cibleA");
-                                    cibleAE.appendChild(doc.createTextNode(cibleA + ""));
-                                    service.appendChild(cibleAE);
-
-                                    Element cibleTE = doc.createElement("cibleT");
-                                    cibleTE.appendChild(doc.createTextNode(cibleT + ""));
-                                    service.appendChild(cibleTE);
-
-                                    Element cibleDE = doc.createElement("dcible");
-                                    cibleDE.appendChild(doc.createTextNode(cibleD + ""));
-                                    service.appendChild(cibleDE);
-
-                                    TransformerFactory transformerFactory = TransformerFactory.newInstance();
-                                    Transformer transformer = transformerFactory.newTransformer();
-                                    DOMSource source = new DOMSource(doc);
-                                    StreamResult result = new StreamResult(new File(path));
-                                    transformer.transform(source, result);
-                                    response.sendRedirect("./settings.jsp?err=Cible%20ajoute.");
-
-                                } catch (IOException | ClassNotFoundException | SQLException | ParserConfigurationException | DOMException | SAXException | TransformerException e) {
-                                    response.sendRedirect("./settings.jsp?err=" + URLEncoder.encode(e.getMessage(), "UTF-8"));
+                                Service service = new ServiceController().getById(id);
+                                if (service != null) {
+                                    Cible cible = new Cible();
+                                    cible.setServiceId(id);
+                                    cible.setServiceName(service.getName());
+                                    cible.setCibleA(cibleA);
+                                    cible.setCibleT(cibleT);
+                                    cible.setCiblePer(Double.parseDouble(cibleD));
+                                    new CibleController().addCible(cible);
                                 }
-
+                                response.sendRedirect("./settings.jsp?err=" + URLEncoder.encode("Cible est ajouté!", "UTF-8"));
+                            } else {
+                                response.sendRedirect("./settings.jsp?err=" + URLEncoder.encode("Erreur sur les données", "UTF-8"));
                             }
 
+                        } else {
+                            response.sendRedirect("./settings.jsp?err=" + URLEncoder.encode("les champs vide", "UTF-8"));
                         }
 
-                    }
-                    if (Objects.equals(type, "user")) {
+                    } else if (Objects.equals(type, "user")) {
                         String username = request.getParameter("username");
                         String password = request.getParameter("password");
                         String password2 = request.getParameter("password2");
                         String grade = request.getParameter("grade");
                         String firstName = request.getParameter("firstName");
                         String lastName = request.getParameter("lastName");
-                        if (Objects.equals(password, password2)) {
-                            try {
-                                CfgHandler cfg = new CfgHandler(request);
-                                String path = cfg.getUserFile();
 
-                                Document doc = cfg.getXml(path);
-                                Node users = doc.getFirstChild();
-
-                                Element user = doc.createElement("user");
-                                users.appendChild(user);
-
-                                Element usernameE = doc.createElement("username");
-                                usernameE.appendChild(doc.createTextNode(username));
-                                user.appendChild(usernameE);
-
+                        if (StringUtils.isNoneBlank(username, password, password2, grade, firstName, lastName)) {
+                            if (Objects.equals(password, password2)) {
+                                Utilisateur user = new Utilisateur();
                                 PasswordAuthentication pa = new PasswordAuthentication();
-                                Element passwordE = doc.createElement("password");
-                                passwordE.appendChild(doc.createTextNode(pa.hash(password.toCharArray())));
-                                user.appendChild(passwordE);
-
-                                Element gradeE = doc.createElement("grade");
-                                gradeE.appendChild(doc.createTextNode(grade));
-                                user.appendChild(gradeE);
-
-                                Element firstNameE = doc.createElement("firstName");
-                                firstNameE.appendChild(doc.createTextNode(firstName));
-                                user.appendChild(firstNameE);
-
-                                Element lastNameE = doc.createElement("lastName");
-                                lastNameE.appendChild(doc.createTextNode(lastName));
-                                user.appendChild(lastNameE);
-
-                                Element dateAdded = doc.createElement("date");
-                                dateAdded.appendChild(doc.createTextNode(new Date().toString()));
-                                user.appendChild(dateAdded);
-
-                                Element sponsor = doc.createElement("sponsor");
-                                sponsor.appendChild(doc.createTextNode(request.getSession().getAttribute("user").toString()));
-                                user.appendChild(sponsor);
-
-                                TransformerFactory transformerFactory = TransformerFactory.newInstance();
-                                Transformer transformer = transformerFactory.newTransformer();
-                                DOMSource source = new DOMSource(doc);
-                                StreamResult result = new StreamResult(new File(path));
-                                transformer.transform(source, result);
-                                response.sendRedirect("./settings.jsp?err=Utilisateur%20ajoute.#userBtn");
-
-                            } catch (IOException | ParserConfigurationException | DOMException | SAXException | TransformerException e) {
-                                response.sendRedirect("./settings.jsp?err=" + URLEncoder.encode(e.getMessage(), "UTF-8"));
+                                user.setId(UUID.randomUUID());
+                                user.setUsername(username);
+                                user.setLastName(lastName);
+                                user.setFirstName(firstName);
+                                user.setPassword(pa.hash(password.toCharArray()));
+                                user.setDate(new Date());
+                                user.setSponsor(request.getSession().getAttribute("user").toString());
+                                user.setGrade(grade);
+                                if (new UtilisateurController().AddUtilisateur(user)) {
+                                    response.sendRedirect("./settings.jsp?err=" + URLEncoder.encode("Utilisateur ajouté", "UTF-8"));
+                                } else {
+                                    response.sendRedirect("./settings.jsp?err=" + URLEncoder.encode("Utilisateur n'est ajouté", "UTF-8"));
+                                }
+                            } else {
+                                response.sendRedirect("./settings.jsp?err=" + URLEncoder.encode("les deux mots de passe est incorrect", "UTF-8"));
                             }
-
                         } else {
-                            response.sendRedirect("./settings.jsp?err=les%20mots%20de%20passe%20ne%20sont%20pas%20les%20memes.");
+                            response.sendRedirect("./settings.jsp?err=" + URLEncoder.encode("les champs vide", "UTF-8"));
                         }
 
-                    }
-                    if (Objects.equals(type, "extra")) {
+                    } else if (Objects.equals(type, "extra")) {
                         String id = request.getParameter("serviceNameExtra");
                         String extraH = request.getParameter("extraH");
                         String extraM = request.getParameter("extraM");
@@ -184,7 +130,7 @@ public class Add extends HttpServlet {
                                 int extra = (Integer.parseInt(extraH) * 3600) + (Integer.parseInt(extraM) * 60) + Integer.parseInt(extraS);
                                 try {
                                     CfgHandler cfg = new CfgHandler(request);
-                                    String path = cfg.getExtraFile();
+                                    String path = cfg.getExtraFile(request);
 
                                     Document doc = cfg.getXml(path);
                                     Node extras = doc.getFirstChild();
@@ -226,21 +172,21 @@ public class Add extends HttpServlet {
 
                         }
 
-                    }
-                    if (Objects.equals(type, "goal")) {
+                    } else if (Objects.equals(type, "goal")) {
                         String maxA = request.getParameter("maxA");
                         String goalT = request.getParameter("goalT");
-                        CfgHandler cfg = new CfgHandler(request);
-                        Properties p = new Properties();
-                        p.setProperty("maxA", maxA);
-                        p.setProperty("goalT", goalT);
-                        FileOutputStream f = new FileOutputStream(cfg.getCfgFile());
-                        p.store(f, "daasdasd");
-                        f.close();
-                        p.clear();
-                        response.sendRedirect("./settings.jsp?err=" + URLEncoder.encode("L'objectif est modifiée", "UTF-8"));
+                        if (StringUtils.isNoneBlank(maxA, goalT)) {
+                            AgenceController.updateParameter("max_a", maxA);
+                            AgenceController.updateParameter("goal_t", goalT);
+                            response.sendRedirect("./settings.jsp?err=" + URLEncoder.encode("L'objectif est modifiée", "UTF-8"));
+                        } else {
+                            response.sendRedirect("./settings.jsp?err=" + URLEncoder.encode("L'objectif n'est modifiée", "UTF-8"));
+                        }
+                    } else {
+                        response.sendRedirect("./settings.jsp?err=" + URLEncoder.encode("Erreur", "UTF-8"));
                     }
-                }else{
+
+                } else {
                     response.sendRedirect("./home.jsp");
                 }
 

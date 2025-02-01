@@ -8,6 +8,8 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import javax.servlet.http.HttpServletRequest;
 import javax.xml.parsers.ParserConfigurationException;
+import ma.rougga.qstates.controller.CibleController;
+import ma.rougga.qstates.modal.Cible;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.xml.sax.SAXException;
@@ -77,8 +79,14 @@ public class JsonGenerator {
             data.put("perSApT", r.getFloat("perSApT"));
             data.put("avgSec_A", r.getFloat("avgSec_A"));
 
-            int cibleA = cfg.getCibleA(id);
-            int cibleT = cfg.getCibleT(id);
+            long cibleA = 0;
+            long cibleT = 0;
+            CibleController cc = new CibleController();
+            Cible cible = cc.getCibleById(id);
+            if (cible != null) {
+                cibleA = cible.getCibleA();
+                cibleT = cible.getCibleT();
+            }
 
             String cibleSQL = "SELECT G1.BIZ_TYPE_ID, "
                     + "G1.NAME, "

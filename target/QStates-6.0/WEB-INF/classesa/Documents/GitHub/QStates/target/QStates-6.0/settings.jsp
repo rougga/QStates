@@ -1,3 +1,6 @@
+<%@page import="ma.rougga.qstates.controller.AgenceController"%>
+<%@page import="ma.rougga.qstates.modal.Utilisateur"%>
+<%@page import="ma.rougga.qstates.controller.UtilisateurController"%>
 <%@page import="ma.rougga.qstates.modal.Cible"%>
 <%@page import="java.util.List"%>
 <%@page import="ma.rougga.qstates.controller.CibleController"%>
@@ -16,6 +19,8 @@
     }
     CibleController cc = new CibleController();
     List<Cible> cibles = cc.getAllCibles();
+    UtilisateurController uc = new UtilisateurController();
+    List<Utilisateur> users = uc.getAllUtilisateur();
 %>
 <!DOCTYPE html>
 <html>
@@ -82,22 +87,20 @@
                         </thead>
                         <tbody class="">
                             <c:forEach var="cible" items="<%=cibles%>" varStatus="status">
-                                <tr class=' clickable-row '>"
+                                <tr class=' clickable-row '>
                                     <th scope='row'  data-id='<c:out value="${ cible.getServiceId() }"/>'>
                                         <c:out value="${cible.getServiceName()}"/>
                                     </th>
                                     <td >
-                                        <c:out value="${cible.getServiceName()}"/>
-                                        getFormatedTime(Float.parseFloat(eElement.getElementsByTagName("cibleA").item(0).getTextContent()))
+                                        <c:out value="${CfgHandler.getFormatedTime(cible.getCibleA())}"/>
                                     </td>
                                     <td>
-                                        getFormatedTime(Float.parseFloat(eElement.getElementsByTagName("cibleT").item(0).getTextContent()))
+                                        <c:out value="${CfgHandler.getFormatedTime(cible.getCibleT())}"/>
                                     </td>
                                     <td>
-                                        eElement.getElementsByTagName("dcible").item(0).getTextContent()
+                                        <c:out value="${cible.getCiblePer()}"/>%
                                     </td>
                                 </tr>
-                            <th class="col ${status.index} text-wrap text-center align-middle"><c:out value="${col}"/></th>
                             </c:forEach>
 
                         </tbody>
@@ -123,30 +126,20 @@
                         </thead>
 
                         <tbody class="">
-
-
-                            <%                                path = cfg.getUserFile();
-                                doc = cfg.getXml(path);
-                                nList = doc.getElementsByTagName("user");
-                                for (int i = 0;
-                                        i < nList.getLength();
-                                        i++) {
-                                    Node nNode3 = nList.item(i);
-                                    if (nNode3.getNodeType() == Node.ELEMENT_NODE) {
-                                        Element eElement3 = (Element) nNode3;
-
-                            %><%="<tr class=' clickable-row3 '>"
-                                    + "<th scope='row' >" + eElement3.getElementsByTagName("username").item(0).getTextContent() + "</th>"
-                                    + "<td ><b>" + eElement3.getElementsByTagName("lastName").item(0).getTextContent() + " " + eElement3.getElementsByTagName("firstName").item(0).getTextContent() + "</b></td>"
-                                    + "<td data-grade='" + eElement3.getElementsByTagName("grade").item(0).getTextContent() + "'><b>" + CfgHandler.getGrade(eElement3.getElementsByTagName("grade").item(0).getTextContent().toLowerCase().trim()) + "</b></td>"
-                                    + "</tr>"%><%
-
-                                            }
-                                        }
-
-
-                            %>
-
+                            <c:forEach var="user" items="<%=users%>" varStatus="status">
+                                <tr class=' clickable-row3 '>
+                                    <th scope='row'  data-id='<c:out value="${ user.getId() }"/>'>
+                                        <c:out value="${user.getUsername()}"/>
+                                    </th>
+                                    <td >
+                                        <c:out value="${user.getLastName()}"/>
+                                        <c:out value="${user.getFirstName()}"/>
+                                    </td>
+                                    <td data-grade='<c:out value="${user.getGrade()}"/>'>
+                                        <c:out value="${CfgHandler.getGrade(user.getGrade())}"/>
+                                    </td>
+                                </tr>
+                            </c:forEach>
                         </tbody>
                     </table>
                 </div>             
@@ -168,12 +161,12 @@
                         </thead>
 
                         <tbody class="">
+                            <%                                
+                                
+                                String path = CfgHandler.getExtraFile(request);
 
-
-                            <%                                path = cfg.getExtraFile();
-
-                                doc = cfg.getXml(path);
-                                nList = doc.getElementsByTagName("service");
+                                Document doc = CfgHandler.getXml(path);
+                                NodeList nList = doc.getElementsByTagName("service");
                                 for (int i = 0; i < nList.getLength(); i++) {
                                     Node nNode2 = nList.item(i);
                                     if (nNode2.getNodeType() == Node.ELEMENT_NODE) {
@@ -212,11 +205,11 @@
 
                             <tr class="clickable-row4">
                                 <td>Max Attente</td>
-                                <td><%= cfg.getPropertie("maxA")%></td>
+                                <td><%= AgenceController.getMaxAtt() %></td>
                             </tr>
                             <tr class="clickable-row4">
                                 <td>But Traitement</td>
-                                <td><%= cfg.getPropertie("goalT")%></td>
+                                <td><%= AgenceController.getGoalTr() %></td>
                             </tr>
 
                         </tbody>
@@ -410,11 +403,11 @@
 
                                     <div class="form-group">
                                         <label for="maxA">Max Attente:</label><br>
-                                        <input type="number" class="form-control" id="goalAH" name="maxA" placeholder="Nb." min="0" value="<%= cfg.getPropertie("maxA")%>" required>
+                                        <input type="number" class="form-control" id="goalAH" name="maxA" placeholder="Nb." min="0" value="<%= AgenceController.getMaxAtt() %>" required>
                                     </div>
                                     <div class="form-group">
                                         <label for="goalT">But Traitement:</label><br>
-                                        <input type="number" class="form-control" id="goalTH" name="goalT" placeholder="Nb." min="0" value="<%= cfg.getPropertie("goalT")%>" required>
+                                        <input type="number" class="form-control" id="goalTH" name="goalT" placeholder="Nb." min="0" value="<%= AgenceController.getGoalTr() %>" required>
                                     </div>
                                     <div class="">
                                         <input type="hidden" class="form-control" name="type" value="goal">
@@ -435,4 +428,7 @@
         </div>
     </body>
 
+    <script>
+        history.replaceState({page: 1}, 'title', "?err=");
+    </script>
 </html>

@@ -1,13 +1,14 @@
 package ma.rougga.qstates.controller;
 
+import java.net.URLEncoder;
+import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import ma.rougga.qstates.CPConnection;
 import ma.rougga.qstates.CfgHandler;
 import ma.rougga.qstates.PgConnection;
 import ma.rougga.qstates.modal.Utilisateur;
@@ -94,7 +95,7 @@ public class UtilisateurController {
     public boolean AddUtilisateur(Utilisateur u) {
         try {
             PgConnection con = new PgConnection();
-            PreparedStatement p = con.getStatement().getConnection().prepareStatement("insert into rougga_users (id,username,password,grade,first_name,last_name,sponsor) values(?,?,?,?,?,?,?);");
+            PreparedStatement p = con.getStatement().getConnection().prepareStatement("insert into rougga_users (id,username,password,grade,first_name,last_name,sponsor,date) values(?,?,?,?,?,?,?,?);");
             p.setString(1, u.getId().toString());
             p.setString(2, u.getUsername());
             p.setString(3, u.getPassword());
@@ -102,6 +103,7 @@ public class UtilisateurController {
             p.setString(5, u.getFirstName());
             p.setString(6, u.getLastName());
             p.setString(7, u.getSponsor());
+            p.setDate(8, new java.sql.Date(u.getDate().getTime()));
             p.execute();
             con.closeConnection();
             return true;
@@ -125,6 +127,21 @@ public class UtilisateurController {
             logger.error(e.getMessage());
             return false;
         }
+    }
+
+    public String getBranchName() {
+        String BRANCH_NAME = "BORNE";
+        try {
+            Connection con = new CPConnection().getConnection();
+            ResultSet r = con.createStatement().executeQuery("SELECT value FROM t_basic_par where name='BRANCH_NAME';");
+            if (r.next()) {
+                BRANCH_NAME = r.getString("value");
+            }
+            con.close();
+        } catch (SQLException e) {
+            logger.error(e.getMessage());
+        }
+        return BRANCH_NAME;
     }
 
 }

@@ -3,11 +3,10 @@ package ma.rougga.qstates.servlets;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.net.URLEncoder;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Objects;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -20,6 +19,11 @@ import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 import ma.rougga.qstates.CfgHandler;
 import ma.rougga.qstates.PgConnection;
+import ma.rougga.qstates.controller.CibleController;
+import ma.rougga.qstates.controller.ServiceController;
+import ma.rougga.qstates.modal.Cible;
+import ma.rougga.qstates.modal.Service;
+import org.apache.commons.lang3.StringUtils;
 import org.w3c.dom.DOMException;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -48,9 +52,33 @@ public class Edit extends HttpServlet {
                         String cibleTM = request.getParameter("cibleTM");
                         String cibleTS = request.getParameter("cibleTS");
                         String cibleD = request.getParameter("cibleD");
+                        if (StringUtils.isNoneBlank(id, cibleAH, cibleAM, cibleAS, cibleTH, cibleTM, cibleTS, cibleD)) {
+
+                            if (!Objects.equals(id, "0")) {
+                                int cibleA = (Integer.parseInt(cibleAH) * 3600) + (Integer.parseInt(cibleAM) * 60) + Integer.parseInt(cibleAS);
+                                int cibleT = (Integer.parseInt(cibleTH) * 3600) + (Integer.parseInt(cibleTM) * 60) + Integer.parseInt(cibleTS);
+
+                                Service service = new ServiceController().getById(id);
+                                if (service != null) {
+                                    Cible cible = new Cible();
+                                    cible.setServiceId(id);
+                                    cible.setServiceName(service.getName());
+                                    cible.setCibleA(cibleA);
+                                    cible.setCibleT(cibleT);
+                                    cible.setCiblePer(Double.parseDouble(cibleD));
+                                    new CibleController().updateCible(cible);
+                                }
+                                response.sendRedirect("./settings.jsp?err=" + URLEncoder.encode("Cible est modifié!", "UTF-8"));
+                            } else {
+                                response.sendRedirect("./settings.jsp?err=" + URLEncoder.encode("Erreur sur les données", "UTF-8"));
+                            }
+
+                        } else {
+                            response.sendRedirect("./settings.jsp?err=" + URLEncoder.encode("les champs vide", "UTF-8"));
+                        }
                         try {
                             CfgHandler cfg = new CfgHandler(request);
-                            String path = cfg.getCibleFile();
+                            String path = cfg.getCibleFile(request);
                             //String path = "C:\\Users\\bouga\\Desktop\\OffReport\\web\\cfg\\cible.xml";
                             Document doc = cfg.getXml(path);
                             Node cibles = doc.getFirstChild();

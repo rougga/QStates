@@ -14,6 +14,9 @@ public class Utilisateur {
     private Date date;
     private String sponsor;
 
+    public Utilisateur() {
+    }
+    
     public Utilisateur(String username, String password, String grade, String firstName, String lastName, Date date, String sponsor) {
         this.id=UUID.randomUUID();
         this.username = username;

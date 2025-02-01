@@ -30,11 +30,11 @@ public class CfgHandler {
     public static final String COMPANY = "ROUGGA";
     public static final String CLIENT = "NST";
     //Data files
-    private final String cfgFile = "\\cfg\\cfg.properties";
-    private final String userFile = "\\cfg\\db\\users.xml";
-    private final String cibleFile = "\\cfg\\db\\cible.xml";
-    private final String extraFile = "\\cfg\\db\\extra.xml";
-    private final String titleFile = "\\cfg\\db\\title.xml";
+    private final static String CFG_FILE = "\\cfg\\cfg.properties";
+    private final static String USER_FILE = "\\cfg\\db\\users.xml";
+    private final static String CIBLE_FILE = "\\cfg\\db\\cible.xml";
+    private final static String EXTRA_FILE = "\\cfg\\db\\extra.xml";
+    private final static String TITLE_FILE = "\\cfg\\db\\title.xml";
     //excel
 
     private final String gblTempExcel = "\\cfg\\excel\\gbltemp.xlsx";
@@ -53,9 +53,9 @@ public class CfgHandler {
     public static String PAGE_TASK = "/QStates/setting/taches.jsp";
 
     //declaration        
-    private HttpServletRequest request;
-    private FileReader FR = null;
-    private Properties prop = null;
+    private static HttpServletRequest request;
+    private static FileReader FR = null;
+    private static Properties prop = null;
     
     public final static SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
     
@@ -106,10 +106,10 @@ public class CfgHandler {
         this.request = r;
     }
 
-    public String getPropertie(String name) throws IOException {
+    public static String getPropertie(String name,HttpServletRequest req) throws IOException {
 
         prop = new Properties();
-        FR = new FileReader(getCfgFile());
+        FR = new FileReader(getCfgFile(req));
         prop.load(FR);
         String val = prop.getProperty(name);
         return val;
@@ -120,16 +120,16 @@ public class CfgHandler {
         FR.close();
     }
 
-    public void addPropertie(String name, String val) throws FileNotFoundException, IOException {
+    public void addPropertie(String name, String val,HttpServletRequest req) throws FileNotFoundException, IOException {
         Properties p = new Properties();
         p.setProperty(name, val);
-        FileOutputStream f = new FileOutputStream(getCfgFile());
+        FileOutputStream f = new FileOutputStream(getCfgFile(req));
         p.store(f, "daasdasd");
         f.close();
         p.clear();
     }
 
-    public Document getXml(String path) throws ParserConfigurationException, SAXException, IOException {
+    public static Document getXml(String path) throws ParserConfigurationException, SAXException, IOException {
         File xml = new File(path);
         DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
         DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
@@ -138,10 +138,10 @@ public class CfgHandler {
         return doc;
     }
 
-    public int getCibleA(String id) throws FileNotFoundException, IOException, ParserConfigurationException, SAXException {
+    public int getCibleA(String id,HttpServletRequest req) throws FileNotFoundException, IOException, ParserConfigurationException, SAXException {
 
         int cibleA = 0;
-        String path = getCibleFile();
+        String path = getCibleFile(req);
         Document doc = getXml(path);
         Node cibles = doc.getFirstChild();
         NodeList nList = cibles.getChildNodes();
@@ -158,10 +158,10 @@ public class CfgHandler {
         return cibleA;
     }
 
-    public int getCibleT(String id) throws FileNotFoundException, IOException, ParserConfigurationException, SAXException {
+    public int getCibleT(String id,HttpServletRequest req) throws FileNotFoundException, IOException, ParserConfigurationException, SAXException {
 
         int cibleT = 0;
-        String path = getCibleFile();
+        String path = getCibleFile(req);
         Document doc = getXml(path);
         Node cibles = doc.getFirstChild();
         NodeList nList = cibles.getChildNodes();
@@ -178,20 +178,20 @@ public class CfgHandler {
         return cibleT;
     }
 
-    public String getCfgFile() {
-        return request.getServletContext().getRealPath(cfgFile);
+    public static String getCfgFile(HttpServletRequest req) {
+        return req.getServletContext().getRealPath(CFG_FILE);
     }
 
-    public String getUserFile() {
-        return request.getServletContext().getRealPath(userFile);
+    public static String getUserFile(HttpServletRequest req) {
+        return req.getServletContext().getRealPath(USER_FILE);
     }
 
-    public String getCibleFile() {
-        return request.getServletContext().getRealPath(cibleFile);
+    public static String getCibleFile(HttpServletRequest req) {
+        return req.getServletContext().getRealPath(CIBLE_FILE);
     }
 
-    public String getExtraFile() {
-        return request.getServletContext().getRealPath(extraFile);
+    public static String getExtraFile(HttpServletRequest req) {
+        return req.getServletContext().getRealPath(EXTRA_FILE);
     }
 
     public String getGblTempExcel() {
@@ -231,7 +231,9 @@ public class CfgHandler {
     }
 
     public String getTitleFile() {
-        return request.getServletContext().getRealPath(titleFile);
+        return request.getServletContext().getRealPath(TITLE_FILE);
     }
 
+    
+    
 }

@@ -1,9 +1,11 @@
 package ma.rougga.qstates.controller;
 
+import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.ArrayList;
+import ma.rougga.qstates.CPConnection;
 import ma.rougga.qstates.modal.Service;
 import org.slf4j.LoggerFactory;
 
@@ -13,15 +15,19 @@ public class ServiceController {
     
     private Statement stm;
 
+    public ServiceController() {
+    }
+
     public ServiceController(Statement stm) {
         this.stm = stm;
     }
 
     public ArrayList<Service> getAll() {
         try {
+            Connection con = new CPConnection().getConnection();
             ArrayList<Service> services = new ArrayList();
 
-            ResultSet r = stm.executeQuery("select * from t_biz_type;");
+            ResultSet r = con.createStatement().executeQuery("select * from t_biz_type;");
             while (r.next()) {
                 services.add(
                         new Service(
@@ -38,7 +44,7 @@ public class ServiceController {
                                 null)
                 );
             }
-            //stm.getConnection().close();
+            con.close();
             return services;
         } catch (Exception e) {
             logger.error(e.getMessage());
@@ -48,8 +54,9 @@ public class ServiceController {
 
     public Service getById(String id) {
         try {
-
-            PreparedStatement p = stm.getConnection().prepareStatement("select * from t_biz_type where id=? ;");
+            
+            Connection con = new CPConnection().getConnection();
+            PreparedStatement p = con.prepareStatement("select * from t_biz_type where id=? ;");
             p.setString(1, id);
             ResultSet r = p.executeQuery();
             if (r.next()) {
@@ -66,10 +73,10 @@ public class ServiceController {
                         r.getInt("hidden"),
                         null));
 
-                //stm.getConnection().close();
+                con.close();
                 return s;
             } else {
-                //stm.getConnection().close();
+                con.close();
                 return null;
             }
         } catch (Exception e) {

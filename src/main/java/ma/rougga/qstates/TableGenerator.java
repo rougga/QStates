@@ -13,8 +13,10 @@ import java.util.List;
 import java.util.Map;
 import javax.servlet.http.HttpServletRequest;
 import javax.xml.parsers.ParserConfigurationException;
+import ma.rougga.qstates.controller.CibleController;
 import ma.rougga.qstates.controller.TitleController;
 import ma.rougga.qstates.handler.TitleHandler;
+import ma.rougga.qstates.modal.Cible;
 import org.xml.sax.SAXException;
 
 public class TableGenerator {
@@ -190,8 +192,14 @@ public class TableGenerator {
             row.add(r.getFloat("perSApT") + "%");
             row.add(getFormatedTime(r.getFloat("avgSec_A")));
 
-            int cibleA = cfg.getCibleA(id);
-            int cibleT = cfg.getCibleT(id);
+            long cibleA = 0;
+            long cibleT = 0;
+            CibleController cc = new CibleController();
+            Cible cible = cc.getCibleById(id);
+            if (cible != null) {
+                cibleA = cible.getCibleA();
+                cibleT = cible.getCibleT();
+            }
 
             String cibleSQL = "SELECT G1.BIZ_TYPE_ID, "
                     + "G1.NAME, "

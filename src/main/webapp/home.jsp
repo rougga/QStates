@@ -1,3 +1,4 @@
+<%@page import="ma.rougga.qstates.controller.AgenceController"%>
 <%@page import="java.util.Map"%>
 <%@page import="javax.swing.text.TabExpander"%>
 <%@page import="java.util.ArrayList"%>
@@ -40,12 +41,11 @@
                 String goalCss = "bg-danger";
                 String waitClass = "is-valid";
                 String goalClass = "is-invalid";
-                CfgHandler cfg = new CfgHandler(request);
                 Stats stat= new Stats();
                 long cWait = stat.getWaitingTicket(null,null);
                 long cGoal = stat.getDealTicket(null, null);
-                long oWait = Long.parseLong(cfg.getPropertie("maxA"));
-                long oGoal = Long.parseLong(cfg.getPropertie("goalT"));
+                long oWait = Long.parseLong(AgenceController.getMaxAtt());
+                long oGoal = Long.parseLong(AgenceController.getGoalTr());
                 if(oWait!=0){
                     waitPer = (((float)cWait/oWait)*100) ;
                 }
@@ -164,7 +164,7 @@
                             </div>
                         </div>
                         <div class="form-group d-flex justify-content-center align-items-center flex-md-row flex-column">
-                            <label for="validationDefaultUsername" class="col-md-5 text-md-right ">Tickets sans affectation:</label>
+                            <label for="validationDefaultUsername" class="col-md-5 text-md-right ">Tickets en attente:</label>
                             <div class="input-group  col-md-6">
                                 <div class="input-group-prepend ">
                                     <span class="input-group-text bg-dark" id="inputGroupPrepend2"><img src="img/icon/ticket.png"/></span>
