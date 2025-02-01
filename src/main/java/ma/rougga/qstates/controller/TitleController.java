@@ -8,8 +8,11 @@ import java.util.ArrayList;
 import java.util.List;
 import ma.rougga.qstates.CPConnection;
 import ma.rougga.qstates.modal.Title;
+import org.slf4j.LoggerFactory;
 
 public class TitleController {
+
+    private static final org.slf4j.Logger logger = LoggerFactory.getLogger(TitleController.class);
 
     public TitleController() {
     }
@@ -23,9 +26,10 @@ public class TitleController {
             stmt.setString(1, title.getName());
             stmt.setString(2, title.getValue());
             stmt.executeUpdate();
+            con.close();
             return true;
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error(e.getMessage());
             return false;
         }
     }
@@ -43,8 +47,9 @@ public class TitleController {
                 String title = rs.getString("title");
                 titles.add(new Title(type, title));
             }
+            con.close();
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error(e.getMessage());
         }
         return titles;
     }
@@ -64,8 +69,9 @@ public class TitleController {
                     title = new Title(type, titleValue);
                 }
             }
+            con.close();
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error(e.getMessage());
         }
         return title;
     }
@@ -82,12 +88,15 @@ public class TitleController {
             int rowsUpdated = stmt.executeUpdate();
 
             if (rowsUpdated > 0) {
+                con.close();
                 return true;
             } else {
+                con.close();
                 return false;
             }
+
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error(e.getMessage());
             return false;
         }
     }
@@ -103,12 +112,14 @@ public class TitleController {
             int rowsDeleted = stmt.executeUpdate();
 
             if (rowsDeleted > 0) {
+                con.close();
                 return true;
             } else {
+                con.close();
                 return false;
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error(e.getMessage());
             return false;
         }
     }

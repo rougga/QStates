@@ -69,7 +69,7 @@
                 </div>
             </li>  
             <li class="nav-item" id="topics">
-                <a class="nav-link font-weight-bold" href="javascript:alert('QStates v<%= CfgHandler.VERSION %>');">
+                <a class="nav-link font-weight-bold" href="javascript:alert('QStates v<%= CfgHandler.VERSION%>');">
                     <span class="far fa-file-alt"></span> Aide
                 </a>
             </li> 
@@ -84,12 +84,20 @@
                     <small><%= session.getAttribute("db")%></small>
                 </a>
                 <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+                    <%
+                        if (Objects.equals(session.getAttribute("grade"), "adm")) {
+                    %>
                     <a class="dropdown-item font-weight-bold navHover" href="/QStates/settings.jsp" >Paramètres</a>
                     <a class="dropdown-item font-weight-bold navHover" href="/QStates/setting/taches.jsp" >Les taches</a>
                     <a class="dropdown-item font-weight-bold navHover" href="/QStates/setting/titles.jsp" >Les titres</a>
+                    <%
+                        }
+                    %>
+
                     <div class="dropdown-divider"></div>
                     <a class="dropdown-item font-weight-bold navHover" href="/QStates/Logoff">
-                        Déconnexion</a>
+                        Déconnexion
+                    </a>
                 </div>
             </li>
 

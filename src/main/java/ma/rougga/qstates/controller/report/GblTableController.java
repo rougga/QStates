@@ -67,8 +67,8 @@ public class GblTableController {
             JSONObject service = new JSONObject();
             JSONObject data = new JSONObject();
             String id = r.getString("biz_type_id");
-            service.put("id", id);
-            service.put("name", r.getString("name"));
+            service.put("service_id", id);
+            service.put("service_name", r.getString("name"));
             data.put("nb_t", r.getLong("nb_t"));
             data.put("nb_tt", r.getLong("nb_tt"));
             data.put("nb_a", r.getLong("nb_a"));

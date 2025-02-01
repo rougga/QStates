@@ -1,3 +1,4 @@
+<%@page import="ma.rougga.qstates.controller.TitleController"%>
 <%@page import="java.util.Map"%>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@page import="ma.rougga.qstates.TableGenerator"%>
@@ -30,6 +31,10 @@
     List<ArrayList<String>> table2;
     String[] cols;
     String toDay = gbl.getFormat().format(new Date());
+    Map data = gbl.getTable(request, request.getParameter("date1"), request.getParameter("date2"), request.getSession().getAttribute("db") + "", type);
+    table2 = (List) data.get("table");
+    Title = (String) data.get("title");
+    cols = (String[]) data.get("cols");
 %>
 <!DOCTYPE html>
 <html>
@@ -58,27 +63,24 @@
                 </script>
             </div>
             <div class="body">
-                <%                     if (request.getParameter("err") != "" && request.getParameter("err") != null) {
-
+               <%                    
+                   String err = request.getParameter("err");
+                    if (err != "" && err != null) {
                 %>
-                <%= "<div class='alert alert-danger alert-dismissible fade show' role='alert'><b>"
-                        + request.getParameter("err")
-                        + "</b><button type='button' class='close' data-dismiss='alert' aria-label='Close'><span aria-hidden='true'>&times;</span></button></div>"%>
+                <div class='alert alert-danger alert-dismissible fade show' role='alert'>
+                    <b><%=err%></b>
+                    <button type='button' class='close' data-dismiss='alert' aria-label='Close'>
+                        <span aria-hidden='true'>&times;</span>
+                    </button>
+                </div>
                 <%
                     }
-
-                    Map data = gbl.getTable(request, request.getParameter("date1"), request.getParameter("date2"), request.getSession().getAttribute("db") + "", type);
-                    table2 = (List) data.get("table");
-                    Title = (String) data.get("title");
-                    cols = (String[]) data.get("cols");
-
-
                 %>
 
 
                 <h2 class="text-center p-4"><%= Title%></h2>
 
-                <%= data.get("top") %>
+                <%= data.get("top")%>
                 <table class="table table-light table-bordered table-striped  table-responsive">
                     <a class="float-right btn btn-link text-white" id="plus">PLUS >></a>
                     <thead class="appColor ">
@@ -91,7 +93,7 @@
                     <tbody  class="font-weight-bold ">
 
                         <%
-                            if (table2!= null && table2.size()>0) {
+                            if (table2 != null && table2.size() > 0) {
                                 for (int i = 0; i < table2.size(); i++) {
                         %>
                         <tr class="db1">
@@ -111,7 +113,7 @@
 
             </div>
             <div class="footer">
-                <%= data.get("bottom") %>
+                <%= data.get("bottom")%>
             </div>
         </div>
         <script>
@@ -130,7 +132,7 @@
                     apl: ".0,.1,.2,.7,.8,.9,.10,.11",
                     gla: ".0,.1,.8,.9,.10,.11,.12,.13,.14,.15",
                     glt: ".0,.1,.2,.3,.4,.5,.6,.7,.8,.15",
-                    tch:".0,.1,.2,.3,.4,.7,.8"
+                    tch: ".0,.1,.2,.3,.4,.7,.8"
                 };
                 var colsToHide = {
                     glt: ".8",
@@ -249,76 +251,76 @@
                     if ($(this).val() > $("#date2").val()) {
                         alert("La date Du est plus gros que la date Au.");
                         $("#date2").val(new Date().toLocaleDateString('en-CA'));
-                    }else{
-                        
-        addDateToSessionStorage();
-        updateLinks();
+                    } else {
+
+                        addDateToSessionStorage();
+                        updateLinks();
                     }
                 });
                 $("#date2").on('change', function () {
                     if ($("#date1").val() > $("#date2").val()) {
                         alert("La date Du est plus gros que la date Au.");
                         $("#date2").val(new Date().toLocaleDateString('en-CA'));
-                    }else{
-                        
-        addDateToSessionStorage();
-        updateLinks();
+                    } else {
+
+                        addDateToSessionStorage();
+                        updateLinks();
                     }
                 });
                 $("#today").on('click', function () {
                     $("#date1").val(moment().format('YYYY-MM-DD'));
                     $("#date2").val(moment().format('YYYY-MM-DD'));
-        addDateToSessionStorage();
-        updateLinks();
+                    addDateToSessionStorage();
+                    updateLinks();
                 });
                 $("#yesterday").on('click', function () {
                     $("#date1").val(moment().subtract(1, 'days').format('YYYY-MM-DD'));
                     $("#date2").val(moment().subtract(1, 'days').format('YYYY-MM-DD'));
-        addDateToSessionStorage();
-        updateLinks();
+                    addDateToSessionStorage();
+                    updateLinks();
                 });
-                
+
                 $("#cWeek").on('click', function () {
                     $("#date1").val(moment().startOf('week').format('YYYY-MM-DD'));
                     $("#date2").val(moment().endOf('week').format('YYYY-MM-DD'));
-        addDateToSessionStorage();
-        updateLinks();
+                    addDateToSessionStorage();
+                    updateLinks();
                 });
                 $("#lWeek").on('click', function () {
                     $("#date1").val(moment().subtract(1, 'week').startOf('week').format('YYYY-MM-DD'));
                     $("#date2").val(moment().subtract(1, 'week').endOf('week').format('YYYY-MM-DD'));
-        addDateToSessionStorage();
-        updateLinks();
+                    addDateToSessionStorage();
+                    updateLinks();
                 });
                 $("#cMonth").on('click', function () {
                     $("#date1").val(moment().startOf('month').format('YYYY-MM-DD'));
                     $("#date2").val(moment().endOf('month').format('YYYY-MM-DD'));
-        addDateToSessionStorage();
-        updateLinks();
+                    addDateToSessionStorage();
+                    updateLinks();
                 });
                 $("#lMonth").on('click', function () {
                     $("#date1").val(moment().subtract(1, 'month').startOf('month').format('YYYY-MM-DD'));
                     $("#date2").val(moment().subtract(1, 'month').endOf('month').format('YYYY-MM-DD'));
-        addDateToSessionStorage();
-        updateLinks();
+                    addDateToSessionStorage();
+                    updateLinks();
                 });
                 $("#cYear").on('click', function () {
                     $("#date1").val(moment().startOf('year').format('YYYY-MM-DD'));
                     $("#date2").val(moment().endOf('year').format('YYYY-MM-DD'));
-        addDateToSessionStorage();
-        updateLinks();
+                    addDateToSessionStorage();
+                    updateLinks();
                 });
                 $("#lYear").on('click', function () {
                     $("#date1").val(moment().subtract(1, 'year').startOf('year').format('YYYY-MM-DD'));
                     $("#date2").val(moment().subtract(1, 'year').endOf('year').format('YYYY-MM-DD'));
-        addDateToSessionStorage();
-        updateLinks();
+                    addDateToSessionStorage();
+                    updateLinks();
                 });
-                
-                
+
+
                 showCols("<%= type%>");
                 setDates();
-   updateLinks();
+                updateLinks();
             });
 
         </script>

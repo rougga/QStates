@@ -41,8 +41,8 @@
         <servlet-class>ma.rougga.qstates.servlets.DeleteTask</servlet-class>
     </servlet>
     <servlet>
-        <servlet-name>GetGlobaleTable</servlet-name>
-        <servlet-class>ma.rougga.qstates.api.report.GetGlobaleTable</servlet-class>
+        <servlet-name>GetGblTable</servlet-name>
+        <servlet-class>ma.rougga.qstates.api.report.GetGblTable</servlet-class>
         <init-param>
             <param-name>date1</param-name>
             <param-value>Value</param-value>
@@ -67,6 +67,22 @@
     <servlet>
         <servlet-name>GetEmpSerTable</servlet-name>
         <servlet-class>ma.rougga.qstates.api.report.GetEmpSerTable</servlet-class>
+    </servlet>
+    <servlet>
+        <servlet-name>GetGchTable</servlet-name>
+        <servlet-class>ma.rougga.qstates.api.report.GetGchTable</servlet-class>
+    </servlet>
+    <servlet>
+        <servlet-name>GetGchSerTable</servlet-name>
+        <servlet-class>ma.rougga.qstates.api.report.GetGchSerTable</servlet-class>
+    </servlet>
+    <servlet>
+        <servlet-name>GetGlaTable</servlet-name>
+        <servlet-class>ma.rougga.qstates.api.report.GetGlaTable</servlet-class>
+    </servlet>
+    <servlet>
+        <servlet-name>GetGltTable</servlet-name>
+        <servlet-class>ma.rougga.qstates.api.report.GetGltTable</servlet-class>
     </servlet>
     <servlet-mapping>
         <servlet-name>Settings</servlet-name>
@@ -139,10 +155,6 @@
         <url-pattern>/DeleteTask</url-pattern>
     </servlet-mapping>
     <servlet-mapping>
-        <servlet-name>GetGlobaleTable</servlet-name>
-        <url-pattern>/getglobaletable</url-pattern>
-    </servlet-mapping>
-    <servlet-mapping>
         <servlet-name>OnlineCheck</servlet-name>
         <url-pattern>/onlinecheck</url-pattern>
     </servlet-mapping>
@@ -157,6 +169,26 @@
     <servlet-mapping>
         <servlet-name>GetEmpSerTable</servlet-name>
         <url-pattern>/getempsertable</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>GetGblTable</servlet-name>
+        <url-pattern>/getgbltable</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>GetGchTable</servlet-name>
+        <url-pattern>/getgchtable</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>GetGchSerTable</servlet-name>
+        <url-pattern>/getgchsertable</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>GetGlaTable</servlet-name>
+        <url-pattern>/getglatable</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>GetGltTable</servlet-name>
+        <url-pattern>/getglttable</url-pattern>
     </servlet-mapping>
     <session-config>
         <session-timeout>

@@ -1,3 +1,6 @@
+<%@page import="ma.rougga.qstates.modal.Cible"%>
+<%@page import="java.util.List"%>
+<%@page import="ma.rougga.qstates.controller.CibleController"%>
 <%@page import="ma.rougga.qstates.CfgHandler"%>
 <%@page import="org.w3c.dom.Element"%>
 <%@page import="org.w3c.dom.NodeList"%>
@@ -6,29 +9,13 @@
 <%@page import="java.sql.ResultSet"%>
 <%@page import="ma.rougga.qstates.PgConnection"%>
 <%@page contentType="text/html" pageEncoding="UTF-8"%>
+<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%
     if (!Objects.equals(session.getAttribute("grade"), "adm")) {
         response.sendRedirect("./home.jsp");
     }
-%>
-<%!
-    public String getFormatedTime(Float Sec) {
-        int hours = (int) (Sec / 3600);
-        int minutes = (int) ((Sec % 3600) / 60);
-        int seconds = (int) (Sec % 60);
-        return String.format("%02d:%02d:%02d", hours, minutes, seconds);
-    }
-     public String getGrade(String grd) {
-        switch (grd) {
-            case "adm":
-                return "Administrateur";
-            case "sv":
-                return "Superviseur";
-            case "user":
-                return "Utilisateur";
-        }
-        return "erreur!";
-    }
+    CibleController cc = new CibleController();
+    List<Cible> cibles = cc.getAllCibles();
 %>
 <!DOCTYPE html>
 <html>
@@ -45,7 +32,7 @@
         <script src="./js/settings.js"></script>
         <style>
             table{
-                white-space:nowrap; 
+                white-space:nowrap;
             }
         </style>
     </head>
@@ -90,46 +77,39 @@
                                 <th scope="col">Service</th>
                                 <th scope="col">Cible d'attente</th>
                                 <th scope="col">Cible Traitement</th>
-                                <th scope="col">%dépasse. Cible</th>
+                                <th scope="col">% dépassé Cible</th>
                             </tr>
                         </thead>
-
                         <tbody class="">
-
-
-                            <%
-                                CfgHandler cfg = new CfgHandler(request);
-                                String path =  cfg.getCibleFile();
-
-                                Document doc = cfg.getXml(path);
-                                NodeList nList = doc.getElementsByTagName("service");
-                                for (int i = 0; i < nList.getLength(); i++) {
-                                    Node nNode = nList.item(i);
-                                    if (nNode.getNodeType() == Node.ELEMENT_NODE) {
-                                        Element eElement = (Element) nNode;
-
-                            %><%="<tr class=' clickable-row '>"
-                                    + "<th scope='row'  data-id='" + eElement.getElementsByTagName("id").item(0).getTextContent() + "'>" + eElement.getElementsByTagName("name").item(0).getTextContent() + "</th>"
-                                    + "<td ><b>" + getFormatedTime(Float.parseFloat(eElement.getElementsByTagName("cibleA").item(0).getTextContent())) + "</b></td>"
-                                    + "<td><b>" + getFormatedTime(Float.parseFloat(eElement.getElementsByTagName("cibleT").item(0).getTextContent())) + "</b></td>"
-                                    + "<td><b>" + eElement.getElementsByTagName("dcible").item(0).getTextContent() + "</b></td>"
-                                    + "</tr>"%><%
-
-                                            }
-                                        }
-
-
-                            %>
+                            <c:forEach var="cible" items="<%=cibles%>" varStatus="status">
+                                <tr class=' clickable-row '>"
+                                    <th scope='row'  data-id='<c:out value="${ cible.getServiceId() }"/>'>
+                                        <c:out value="${cible.getServiceName()}"/>
+                                    </th>
+                                    <td >
+                                        <c:out value="${cible.getServiceName()}"/>
+                                        getFormatedTime(Float.parseFloat(eElement.getElementsByTagName("cibleA").item(0).getTextContent()))
+                                    </td>
+                                    <td>
+                                        getFormatedTime(Float.parseFloat(eElement.getElementsByTagName("cibleT").item(0).getTextContent()))
+                                    </td>
+                                    <td>
+                                        eElement.getElementsByTagName("dcible").item(0).getTextContent()
+                                    </td>
+                                </tr>
+                            <th class="col ${status.index} text-wrap text-center align-middle"><c:out value="${col}"/></th>
+                            </c:forEach>
 
                         </tbody>
                     </table>
+
                 </div>
                 <div class="" id="userTbl">
                     <h1>
                         Utilisateurs : 
                         <span class="  float-right">
                             <a class="btn btn-success" id="userAdd" data-toggle="modal" data-target="#userModal"><img src="./img/icon/plus.png"> Ajouter</a>
-                           <!-- <a class="btn btn-info disabled" id="userEdit"><img src="./img/icon/pencil.png"> Editer</a>-->
+                            <!-- <a class="btn btn-info disabled" id="userEdit"><img src="./img/icon/pencil.png"> Editer</a>-->
                             <a class="btn btn-danger" id="userDlt" href="#"><img src="./img/icon/trash.png"> Supprimer</a>
                         </span>
                     </h1>
@@ -145,10 +125,9 @@
                         <tbody class="">
 
 
-                            <%
-                                path = cfg.getUserFile();
-                                 doc = cfg.getXml(path);
-                                 nList = doc.getElementsByTagName("user");
+                            <%                                path = cfg.getUserFile();
+                                doc = cfg.getXml(path);
+                                nList = doc.getElementsByTagName("user");
                                 for (int i = 0;
                                         i < nList.getLength();
                                         i++) {
@@ -159,7 +138,7 @@
                             %><%="<tr class=' clickable-row3 '>"
                                     + "<th scope='row' >" + eElement3.getElementsByTagName("username").item(0).getTextContent() + "</th>"
                                     + "<td ><b>" + eElement3.getElementsByTagName("lastName").item(0).getTextContent() + " " + eElement3.getElementsByTagName("firstName").item(0).getTextContent() + "</b></td>"
-                                    + "<td data-grade='" + eElement3.getElementsByTagName("grade").item(0).getTextContent() + "'><b>" + getGrade(eElement3.getElementsByTagName("grade").item(0).getTextContent().toLowerCase().trim()) + "</b></td>"
+                                    + "<td data-grade='" + eElement3.getElementsByTagName("grade").item(0).getTextContent() + "'><b>" + CfgHandler.getGrade(eElement3.getElementsByTagName("grade").item(0).getTextContent().toLowerCase().trim()) + "</b></td>"
                                     + "</tr>"%><%
 
                                             }
@@ -191,11 +170,10 @@
                         <tbody class="">
 
 
-                            <%
-                                 path =  cfg.getExtraFile();
+                            <%                                path = cfg.getExtraFile();
 
-                                 doc = cfg.getXml(path);
-                                 nList = doc.getElementsByTagName("service");
+                                doc = cfg.getXml(path);
+                                nList = doc.getElementsByTagName("service");
                                 for (int i = 0; i < nList.getLength(); i++) {
                                     Node nNode2 = nList.item(i);
                                     if (nNode2.getNodeType() == Node.ELEMENT_NODE) {
@@ -203,7 +181,7 @@
 
                             %><%="<tr class=' clickable-row2 '>"
                                     + "<th scope='row'  data-id='" + eElement2.getElementsByTagName("id").item(0).getTextContent() + "'>" + eElement2.getElementsByTagName("name").item(0).getTextContent() + "</th>"
-                                    + "<td ><b>" + getFormatedTime(Float.parseFloat(eElement2.getElementsByTagName("extra").item(0).getTextContent())) + "</b></td>"
+                                    + "<td ><b>" + CfgHandler.getFormatedTime(Float.parseFloat(eElement2.getElementsByTagName("extra").item(0).getTextContent())) + "</b></td>"
                                     + "</tr>"%><%
 
                                             }
@@ -268,31 +246,37 @@
                                         <select class="form-control" id="serviceName" name="service" required>
 
                                             <option selected disabled value="0">Sélectionner service:</option>
-                                            <%   
+                                            <%
                                                 ResultSet r = new PgConnection().getStatement().executeQuery("SELECT id,name FROM t_biz_type;");
                                                 while (r.next()) {
                                             %><%="<option value='" + r.getString("id") + "'>"
                                                     + r.getString("name")
                                                     + "</option>"%><%
 
-                                                                }
+                                                        }
                                             %>
                                         </select>
                                     </div>
                                     <div class="form-group">
                                         <label for="cibleA">Cible d'attente:</label><br>
+                                        h:
                                         <input type="number" class="form-control w-25 d-inline-block" id="cibleAH" name="cibleAH" placeholder="Hr" min="0" max="24" required>
+                                        m:
                                         <input type="number" class="form-control w-25 d-inline-block" id="cibleAM" name="cibleAM" placeholder="Min" min="0" max="60" required>
+                                        s:
                                         <input type="number" class="form-control w-25 d-inline-block" id="cibleAS" name="cibleAS" placeholder="Sec" min="0" max="60" required>
                                     </div>
                                     <div class="form-group">
                                         <label for="cibleT">Cible Traitement:</label><br>
+                                        h:
                                         <input type="number" class="form-control w-25 d-inline-block" id="cibleTH" name="cibleTH" placeholder="Hr" min="0" max="24" required>
+                                        m:
                                         <input type="number" class="form-control w-25 d-inline-block" id="cibleTM" name="cibleTM" placeholder="Min" min="0" max="60" required>
+                                        s:
                                         <input type="number" class="form-control w-25 d-inline-block" id="cibleTS" name="cibleTS" placeholder="Sec" min="0" max="60" required>
                                     </div>
                                     <div class="form-group">
-                                        <label for="cibleD">%dépasse. Cible:</label>
+                                        <label for="cibleD">% dépassé Cible:</label>
                                         <input type="number" class="form-control" id="cibleD" name="cibleD" min="0" max="100" required>
                                     </div>
                                     <div class="form-group">
@@ -426,11 +410,11 @@
 
                                     <div class="form-group">
                                         <label for="maxA">Max Attente:</label><br>
-                                        <input type="number" class="form-control" id="goalAH" name="maxA" placeholder="Nb." min="0" value="<%= cfg.getPropertie("maxA") %>" required>
+                                        <input type="number" class="form-control" id="goalAH" name="maxA" placeholder="Nb." min="0" value="<%= cfg.getPropertie("maxA")%>" required>
                                     </div>
                                     <div class="form-group">
                                         <label for="goalT">But Traitement:</label><br>
-                                        <input type="number" class="form-control" id="goalTH" name="goalT" placeholder="Nb." min="0" value="<%= cfg.getPropertie("goalT") %>" required>
+                                        <input type="number" class="form-control" id="goalTH" name="goalT" placeholder="Nb." min="0" value="<%= cfg.getPropertie("goalT")%>" required>
                                     </div>
                                     <div class="">
                                         <input type="hidden" class="form-control" name="type" value="goal">

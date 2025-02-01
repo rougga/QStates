@@ -11,11 +11,15 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import ma.rougga.qstates.CfgHandler;
 import ma.rougga.qstates.PgConnection;
+import ma.rougga.qstates.controller.ServiceController;
 import ma.rougga.qstates.controller.TaskController;
 import ma.rougga.qstates.modal.Task;
 import org.apache.commons.lang3.StringUtils;
+import org.slf4j.LoggerFactory;
 
 public class AddTask extends HttpServlet {
+
+    private static final org.slf4j.Logger logger = LoggerFactory.getLogger(AddTask.class);
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
@@ -37,8 +41,10 @@ public class AddTask extends HttpServlet {
                                 new Task(taskName, serviceId)
                         );
                         response.sendRedirect(CfgHandler.PAGE_TASK + "?err=Tache%20et%20ajouter");
+                        
                     } catch (ClassNotFoundException | SQLException ex) {
                         response.sendRedirect(CfgHandler.PAGE_TASK + "?err=" + ex.getMessage());
+                        logger.error(ex.getMessage());
                     }
                 }
             } else {

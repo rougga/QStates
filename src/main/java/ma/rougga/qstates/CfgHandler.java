@@ -90,7 +90,17 @@ public class CfgHandler {
         return String.format("%02d:%02d:%02d", hours, minutes, seconds);
     }
     
-    
+     public static String getGrade(String grd) {
+        switch (grd) {
+            case "adm":
+                return "Administrateur";
+            case "sv":
+                return "Superviseur";
+            case "user":
+                return "Utilisateur";
+        }
+        return "erreur!";
+    }
     
     public CfgHandler(HttpServletRequest r) throws FileNotFoundException, IOException {
         this.request = r;

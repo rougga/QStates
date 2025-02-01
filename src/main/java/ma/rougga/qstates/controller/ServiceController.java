@@ -4,12 +4,13 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.ArrayList;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import ma.rougga.qstates.modal.Service;
+import org.slf4j.LoggerFactory;
 
 public class ServiceController {
 
+    private static final org.slf4j.Logger logger = LoggerFactory.getLogger(ServiceController.class);
+    
     private Statement stm;
 
     public ServiceController(Statement stm) {
@@ -39,8 +40,8 @@ public class ServiceController {
             }
             //stm.getConnection().close();
             return services;
-        } catch (Exception ex) {
-            Logger.getLogger(ServiceController.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (Exception e) {
+            logger.error(e.getMessage());
             return null;
         }
     }
@@ -64,18 +65,17 @@ public class ServiceController {
                         r.getInt("deal_time_warning"),
                         r.getInt("hidden"),
                         null));
-                
+
                 //stm.getConnection().close();
                 return s;
             } else {
                 //stm.getConnection().close();
                 return null;
             }
-        } catch (Exception ex) {
-            Logger.getLogger(ServiceController.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (Exception e) {
+            logger.error(e.getMessage());
             return null;
         }
     }
 
-    
 }

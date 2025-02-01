@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import javax.servlet.http.HttpServletRequest;
 import javax.xml.parsers.ParserConfigurationException;
+import ma.rougga.qstates.controller.TitleController;
 import ma.rougga.qstates.handler.TitleHandler;
 import org.xml.sax.SAXException;
 
@@ -1996,8 +1997,8 @@ public class TableGenerator {
                 + "tt.id_task,"
                 + "b.name as service,"
                 + "tch.name as task,"
-                + "(SELECT COUNT(*) FROM rougga_ticket_task tt2 , t_ticket t2 WHERE tt2.id_task=tt.id_task and tt2.id_ticket=t2.id "+dateCon+" ) AS NB_TT,"
-                + "(SELECT sum(tt2.quantity) FROM rougga_ticket_task tt2 , t_ticket t2 WHERE tt2.id_task=tt.id_task and tt2.id_ticket=t2.id "+dateCon+" ) AS NB_QTT "
+                + "(SELECT COUNT(*) FROM rougga_ticket_task tt2 , t_ticket t2 WHERE tt2.id_task=tt.id_task and tt2.id_ticket=t2.id " + dateCon + " ) AS NB_TT,"
+                + "(SELECT sum(tt2.quantity) FROM rougga_ticket_task tt2 , t_ticket t2 WHERE tt2.id_task=tt.id_task and tt2.id_ticket=t2.id " + dateCon + " ) AS NB_QTT "
                 + "from "
                 + "rougga_task tch, rougga_ticket_task tt, t_biz_type b , t_ticket t "
                 + "where "
@@ -2020,7 +2021,7 @@ public class TableGenerator {
             row.add(r.getLong("NB_QTT") + "");
             table.add(row);
         }
-       // r = con.getStatement().executeQuery(subTotalSQL);
+        // r = con.getStatement().executeQuery(subTotalSQL);
 //        while (r.next()) {
 //            ArrayList<String> row = new ArrayList<>();
 //            row.add("Sous-Totale");
@@ -2055,38 +2056,39 @@ public class TableGenerator {
         Map data = new HashMap();
         List<ArrayList<String>> T;
         TitleHandler th = new TitleHandler(request);
+        TitleController tc = new TitleController();
         switch (type) {
             case "gbl":
                 T = generateGblTable(request, request.getParameter("date1"), request.getParameter("date2"), String.valueOf(request.getSession().getAttribute("db")));
-                setTitle(th.getGblTitle());
+                setTitle(tc.getTitleByType(type).getValue());
                 setCols(getGblCols());
                 setType(type);
                 setDefaultHTML();
                 break;
             case "emp":
                 T = generateEmpTable(request, request.getParameter("date1"), request.getParameter("date2"), String.valueOf(request.getSession().getAttribute("db")));
-                setTitle(th.getEmpTitle());
+                setTitle(tc.getTitleByType(type).getValue());
                 setCols(getEmpCols());
                 setType(type);
                 setDefaultHTML();
                 break;
             case "empser":
                 T = generateEmpServiceTable(request, request.getParameter("date1"), request.getParameter("date2"), String.valueOf(request.getSession().getAttribute("db")));
-                setTitle(th.getEmpSerTitle());
+                setTitle(tc.getTitleByType(type).getValue());
                 setCols(getEmpServiceCols());
                 setType(type);
                 setDefaultHTML();
                 break;
             case "gch":
                 T = generateGchTable(request, request.getParameter("date1"), request.getParameter("date2"), String.valueOf(request.getSession().getAttribute("db")));
-                setTitle(th.getGchTitle());
+                setTitle(tc.getTitleByType(type).getValue());
                 setCols(getGchCols());
                 setType(type);
                 setDefaultHTML();
                 break;
             case "gchserv":
                 T = generateGchServiceTable(request, request.getParameter("date1"), request.getParameter("date2"), String.valueOf(request.getSession().getAttribute("db")));
-                setTitle(th.getGchServTitle());
+                setTitle(tc.getTitleByType(type).getValue());
                 setCols(getGchServiceCols());
                 setType(type);
                 setDefaultHTML();
@@ -2094,7 +2096,7 @@ public class TableGenerator {
             case "ndt":
                 generateNdtChart(request, request.getParameter("date1"), request.getParameter("date2"), String.valueOf(request.getSession().getAttribute("db")));
                 T = generateNdtTable(request, request.getParameter("date1"), request.getParameter("date2"), String.valueOf(request.getSession().getAttribute("db")));
-                setTitle(th.getNdtTitle());
+                setTitle(tc.getTitleByType(type).getValue());
                 setCols(getNdtCols());
                 setType(type);
                 setChartHTML("false");
@@ -2102,7 +2104,7 @@ public class TableGenerator {
             case "ndtt":
                 generateNdttChart(request, request.getParameter("date1"), request.getParameter("date2"), String.valueOf(request.getSession().getAttribute("db")));
                 T = generateNdttTable(request, request.getParameter("date1"), request.getParameter("date2"), String.valueOf(request.getSession().getAttribute("db")));
-                setTitle(th.getNdttTitle());
+                setTitle(tc.getTitleByType(type).getValue());
                 setCols(getNdtCols());
                 setType(type);
                 setChartHTML("false");
@@ -2110,7 +2112,7 @@ public class TableGenerator {
             case "ndta":
                 generateNdtaChart(request, request.getParameter("date1"), request.getParameter("date2"), String.valueOf(request.getSession().getAttribute("db")));
                 T = generateNdtaTable(request, request.getParameter("date1"), request.getParameter("date2"), String.valueOf(request.getSession().getAttribute("db")));
-                setTitle(th.getNdtaTitle());
+                setTitle(tc.getTitleByType(type).getValue());
                 setCols(getNdtCols());
                 setType(type);
                 setChartHTML("false");
@@ -2118,70 +2120,70 @@ public class TableGenerator {
             case "ndtsa":
                 generateNdtsaChart(request, request.getParameter("date1"), request.getParameter("date2"), String.valueOf(request.getSession().getAttribute("db")));
                 T = generateNdtsaTable(request, request.getParameter("date1"), request.getParameter("date2"), String.valueOf(request.getSession().getAttribute("db")));
-                setTitle(th.getNdtsaTitle());
+                setTitle(tc.getTitleByType(type).getValue());
                 setCols(getNdtCols());
                 setType(type);
                 setChartHTML("false");
                 break;
             case "cnx":
                 T = generateCnxTable(request, request.getParameter("date1"), request.getParameter("date2"), String.valueOf(request.getSession().getAttribute("db")));
-                setTitle(th.getCnxTitle());
+                setTitle(tc.getTitleByType(type).getValue());
                 setCols(getCnxCols());
                 setType(type);
                 setDateHTML();
                 break;
             case "remp":
                 T = generateEmpTable(request, request.getParameter("date1"), request.getParameter("date2"), String.valueOf(request.getSession().getAttribute("db")));
-                setTitle(th.getRempTitle());
+                setTitle(tc.getTitleByType(type).getValue());
                 setCols(getEmpCols());
                 setType(type);
                 setDateHTML();
                 break;
             case "ser":
                 T = generateSerTable(request, request.getParameter("date1"), request.getParameter("date2"), String.valueOf(request.getSession().getAttribute("db")));
-                setTitle(th.getSerTitle());
+                setTitle(tc.getTitleByType(type).getValue());
                 setCols(getSerCols());
                 setType(type);
                 setTimerHTML();
                 break;
             case "sgch":
                 T = generateSgchTable(request, request.getParameter("date1"), request.getParameter("date2"), String.valueOf(request.getSession().getAttribute("db")));
-                setTitle(th.getSgchTitle());
+                setTitle(tc.getTitleByType(type).getValue());
                 setCols(getSgchCols());
                 setType(type);
                 setTimerHTML();
                 break;
             case "apl":
                 T = generateAplTable(request, request.getParameter("date1"), request.getParameter("date2"), String.valueOf(request.getSession().getAttribute("db")));
-                setTitle(th.getAplTitle());
+                setTitle(tc.getTitleByType(type).getValue());
                 setCols(getAplCols());
                 setType(type);
                 setDateHTML();
                 break;
             case "gla":
                 T = generateGlaTable(request, request.getParameter("date1"), request.getParameter("date2"), String.valueOf(request.getSession().getAttribute("db")));
-                setTitle(th.getGlaTitle());
+                setTitle(tc.getTitleByType(type).getValue());
                 setCols(getGlaCols());
                 setType(type);
                 setChartHTML("true");
                 break;
             case "glt":
                 T = generateGltTable(request, request.getParameter("date1"), request.getParameter("date2"), String.valueOf(request.getSession().getAttribute("db")));
-                setTitle(th.getGltTitle());
+                setTitle(tc.getTitleByType(type).getValue());
                 setCols(getGltCols());
                 setType(type);
                 setChartHTML("true");
                 break;
             case "tch":
                 T = generateTaskTable(request, request.getParameter("date1"), request.getParameter("date2"), String.valueOf(request.getSession().getAttribute("db")));
-                setTitle(th.getTaskTitle());
+                setTitle(tc.getTitleByType(type).getValue());
                 setCols(getTaskCols());
                 setType(type);
                 setDateHTML();
                 break;
             default:
                 T = generateGblTable(request, request.getParameter("date1"), request.getParameter("date2"), String.valueOf(request.getSession().getAttribute("db")));
-                setTitle(th.getGblTitle());
+                setTitle(tc.getTitleByType(type).getValue());
                 setCols(getGblCols());
                 setType(type);
                 setDefaultHTML();

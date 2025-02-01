@@ -66,8 +66,8 @@ public class EmpTableController {
             JSONObject emp = new JSONObject();
             JSONObject data = new JSONObject();
             String id = r.getString("deal_user");
-            emp.put("id", id);
-            emp.put("name", r.getString("name"));
+            emp.put("user_id", id);
+            emp.put("user_name", r.getString("name"));
             data.put("nb_t", r.getLong("nb_t"));
             data.put("nb_tt", r.getLong("nb_tt"));
             data.put("nb_a", r.getLong("nb_a"));

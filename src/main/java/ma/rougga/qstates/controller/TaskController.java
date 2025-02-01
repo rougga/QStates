@@ -7,11 +7,12 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.UUID;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import ma.rougga.qstates.modal.Task;
+import org.slf4j.LoggerFactory;
 
 public class TaskController {
+
+    private static final org.slf4j.Logger logger = LoggerFactory.getLogger(TaskController.class);
     private Connection con;
     private Statement stm;
 
@@ -28,8 +29,8 @@ public class TaskController {
                 taches.add(new Task(UUID.fromString(r.getString("id")), r.getString("name"), r.getString("id_service")));
             }
             return taches;
-        } catch (SQLException ex) {
-            Logger.getLogger(TaskController.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (SQLException e) {
+            logger.error(e.getMessage());
             return taches;
         }
 
@@ -43,8 +44,8 @@ public class TaskController {
             ps.setString(2, task.getName());
             ps.setString(3, task.getId_service());
             return ps.execute();
-        } catch (SQLException ex) {
-            Logger.getLogger(TaskController.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (SQLException e) {
+            logger.error(e.getMessage());
             return false;
         }
     }
@@ -56,8 +57,8 @@ public class TaskController {
             ps.setString(1, id.toString());
             ps.execute();
             return true;
-        } catch (SQLException ex) {
-            Logger.getLogger(TaskController.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (SQLException e) {
+            logger.error(e.getMessage());
             return false;
         }
     }
@@ -79,23 +80,23 @@ public class TaskController {
                 );
             }
             return taches;
-        } catch (SQLException ex) {
-            Logger.getLogger(TaskController.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (SQLException e) {
+            logger.error(e.getMessage());
             return taches;
         }
     }
 
     public boolean setTaskToTicket(String id_task, String id_ticket, int qte) {
         try {
-            String SQL ="INSERT INTO rougga_ticket_task values (?,?,?)";
+            String SQL = "INSERT INTO rougga_ticket_task values (?,?,?)";
             PreparedStatement ps = stm.getConnection().prepareCall(SQL);
             ps.setString(1, id_ticket);
             ps.setString(2, id_task);
             ps.setInt(3, qte);
             ps.execute();
             return true;
-        } catch (SQLException ex) {
-            Logger.getLogger(TaskController.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (SQLException e) {
+            logger.error(e.getMessage());
             return false;
         }
     }

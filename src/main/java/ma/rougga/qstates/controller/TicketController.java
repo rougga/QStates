@@ -4,8 +4,11 @@ import java.sql.ResultSet;
 import ma.rougga.qstates.CfgHandler;
 import ma.rougga.qstates.modal.Ticket;
 import ma.rougga.qstates.PgConnection;
+import org.slf4j.LoggerFactory;
 
 public class TicketController {
+
+    private static final org.slf4j.Logger logger = LoggerFactory.getLogger(TicketController.class);
 
     public TicketController() {
 
@@ -13,17 +16,17 @@ public class TicketController {
 
     public Ticket getOldestTicket() {
         Ticket ticket = new Ticket();
-        
+
         try {
             PgConnection con = new PgConnection();
-            String sqlQuery = "SELECT id, biz_type_id, ticket_id, evaluation_id, ticket_type, status, " +
-                  "deal_win, transfer_win, deal_user, id_card_info_id, ticket_time, call_time, " +
-                  "start_time, finish_time, call_type, branch_id, id_card_name " +
-                  "FROM t_ticket " +
-                  "WHERE ticket_time = (SELECT MIN(ticket_time) FROM t_ticket) " +
-                  "LIMIT 1;";
+            String sqlQuery = "SELECT id, biz_type_id, ticket_id, evaluation_id, ticket_type, status, "
+                    + "deal_win, transfer_win, deal_user, id_card_info_id, ticket_time, call_time, "
+                    + "start_time, finish_time, call_type, branch_id, id_card_name "
+                    + "FROM t_ticket "
+                    + "WHERE ticket_time = (SELECT MIN(ticket_time) FROM t_ticket) "
+                    + "LIMIT 1;";
             ResultSet resultSet = con.getStatement().executeQuery(sqlQuery);
-            if(resultSet.next()){
+            if (resultSet.next()) {
                 ticket.setId(resultSet.getString("id"));
                 ticket.setBiz_type_id(resultSet.getString("biz_type_id"));
                 ticket.setTicket_id(resultSet.getString("ticket_id"));
@@ -44,8 +47,8 @@ public class TicketController {
             }
             con.closeConnection();
             return ticket;
-        } catch (Exception ex) {
-            System.err.println(ex.getMessage());
+        } catch (Exception e) {
+            logger.error(e.getMessage());
         }
         return null;
     }

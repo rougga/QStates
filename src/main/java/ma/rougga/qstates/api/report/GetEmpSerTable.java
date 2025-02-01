@@ -1,4 +1,3 @@
-
 package ma.rougga.qstates.api.report;
 
 import java.io.IOException;
@@ -10,8 +9,12 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import ma.rougga.qstates.controller.report.EmpSerTableController;
 import org.json.simple.JSONObject;
+import org.slf4j.LoggerFactory;
 
 public class GetEmpSerTable extends HttpServlet {
+
+    private static final org.slf4j.Logger logger = LoggerFactory.getLogger(GetEmpSerTable.class);
+
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         try {
@@ -24,13 +27,14 @@ public class GetEmpSerTable extends HttpServlet {
             JSONObject result = null;
             try {
                 result = new EmpSerTableController().generateSimpleEmpServiceTable(request, date1, date2);
-            } catch (ClassNotFoundException | SQLException  e) {
+            } catch (ClassNotFoundException | SQLException e) {
                 out.print(e.getMessage());
+                logger.error(e.getMessage());
             }
             out.print(result);
 
-        } catch (IOException ex) {
-            System.err.println(ex.getMessage());
+        } catch (IOException e) {
+            logger.error(e.getMessage());
         }
 
     }
