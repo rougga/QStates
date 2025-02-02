@@ -100,26 +100,24 @@ public class GchSerTableController {
         
         while (r.next()) {
             JSONObject emp = new JSONObject();
-            JSONObject data = new JSONObject();
             emp.put("service_id", r.getString("biz_type_id"));
             emp.put("service_name", r.getString("service"));
             emp.put("guichet_id", r.getString("DEAL_WIN"));
             emp.put("guichet_name", r.getString("GUICHET"));
-            data.put("nb_t", r.getLong("nb_t"));
-            data.put("nb_tt", r.getLong("nb_tt"));
-            data.put("nb_a", r.getLong("nb_a"));
-            data.put("nb_tl1", r.getLong("nb_tl1"));
-            data.put("nb_sa", r.getLong("nb_sa"));
-            data.put("perApT", r.getFloat("perApT"));
-            data.put("PERTL1pt", r.getFloat("PERTL1pt"));
-            data.put("perSApT", r.getFloat("perSApT"));
-            data.put("avgSec_A", r.getFloat("avgSec_A"));
-            data.put("nb_ca", 0);
-            data.put("percapt", 0.00);
-            data.put("avgSec_T", r.getFloat("avgSec_T"));
-            data.put("nb_ct", 0);
-            data.put("perctpt", 0.00);
-            emp.put("data", data);
+            emp.put("nb_t", r.getLong("nb_t"));
+            emp.put("nb_tt", r.getLong("nb_tt"));
+            emp.put("nb_a", r.getLong("nb_a"));
+            emp.put("nb_tl1", r.getLong("nb_tl1"));
+            emp.put("nb_sa", r.getLong("nb_sa"));
+            emp.put("perApT", r.getFloat("perApT"));
+            emp.put("PERTL1pt", r.getFloat("PERTL1pt"));
+            emp.put("perSApT", r.getFloat("perSApT"));
+            emp.put("avgSec_A", r.getFloat("avgSec_A"));
+            emp.put("nb_ca", 0);
+            emp.put("percapt", 0.00);
+            emp.put("avgSec_T", r.getFloat("avgSec_T"));
+            emp.put("nb_ct", 0);
+            emp.put("perctpt", 0.00);
             table2.add(emp);
         }
         con.closeConnection();

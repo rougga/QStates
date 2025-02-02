@@ -46,28 +46,26 @@ public class GlaTableController {
         ResultSet r = con.getStatement().executeQuery(SQL);
         while (r.next()) {
             JSONObject emp = new JSONObject();
-            JSONObject data = new JSONObject();
             emp.put("service_id", r.getString("id"));
             emp.put("service_name", r.getString("name"));
             
             //data
-            data.put("s0_15", r.getLong("s0_15"));
-            data.put("s15_30", r.getLong("s15_30"));
-            data.put("s30_60", r.getLong("s30_60"));
-            data.put("s60_90", r.getLong("s60_90"));
-            data.put("s90_120", r.getLong("s90_120"));
-            data.put("s120", r.getLong("s120"));
+            emp.put("s0_15", r.getLong("s0_15"));
+            emp.put("s15_30", r.getLong("s15_30"));
+            emp.put("s30_60", r.getLong("s30_60"));
+            emp.put("s60_90", r.getLong("s60_90"));
+            emp.put("s90_120", r.getLong("s90_120"));
+            emp.put("s120", r.getLong("s120"));
             
-            data.put("m0_5", r.getLong("m0_5"));
-            data.put("m5_10", r.getLong("m5_10"));
-            data.put("m10_20", r.getLong("m10_20"));
-            data.put("m20_30", r.getLong("m20_30"));
-            data.put("m30_45", r.getLong("m30_45"));
-            data.put("m45_50", r.getLong("m45_50"));
-            data.put("m50", r.getLong("m50"));
-            data.put("total", r.getLong("total"));
+            emp.put("m0_5", r.getLong("m0_5"));
+            emp.put("m5_10", r.getLong("m5_10"));
+            emp.put("m10_20", r.getLong("m10_20"));
+            emp.put("m20_30", r.getLong("m20_30"));
+            emp.put("m30_45", r.getLong("m30_45"));
+            emp.put("m45_50", r.getLong("m45_50"));
+            emp.put("m50", r.getLong("m50"));
+            emp.put("total", r.getLong("total"));
             
-            emp.put("data", data);
             table2.add(emp);
         }
         con.closeConnection();

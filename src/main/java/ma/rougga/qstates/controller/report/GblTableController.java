@@ -65,19 +65,18 @@ public class GblTableController {
         ResultSet r = con.getStatement().executeQuery(gblSQL2);
         while (r.next()) {
             JSONObject service = new JSONObject();
-            JSONObject data = new JSONObject();
             String id = r.getString("biz_type_id");
             service.put("service_id", id);
             service.put("service_name", r.getString("name"));
-            data.put("nb_t", r.getLong("nb_t"));
-            data.put("nb_tt", r.getLong("nb_tt"));
-            data.put("nb_a", r.getLong("nb_a"));
-            data.put("nb_tl1", r.getLong("nb_tl1"));
-            data.put("nb_sa", r.getLong("nb_sa"));
-            data.put("perApT", r.getFloat("perApT"));
-            data.put("PERTL1pt", r.getFloat("PERTL1pt"));
-            data.put("perSApT", r.getFloat("perSApT"));
-            data.put("avgSec_A", r.getFloat("avgSec_A"));
+            service.put("nb_t", r.getLong("nb_t"));
+            service.put("nb_tt", r.getLong("nb_tt"));
+            service.put("nb_a", r.getLong("nb_a"));
+            service.put("nb_tl1", r.getLong("nb_tl1"));
+            service.put("nb_sa", r.getLong("nb_sa"));
+            service.put("perApT", r.getFloat("perApT"));
+            service.put("PERTL1pt", r.getFloat("PERTL1pt"));
+            service.put("perSApT", r.getFloat("perSApT"));
+            service.put("avgSec_A", r.getFloat("avgSec_A"));
 
             long cibleA = 0;
             long cibleT = 0;
@@ -131,19 +130,18 @@ public class GblTableController {
                     + "";
             ResultSet cib = con.getStatement().executeQuery(cibleSQL);
             if (cib.next()) {
-                data.put("nb_ca", cib.getLong("nb_ca"));
-                data.put("percapt", cib.getFloat("percapt"));
-                data.put("avgSec_T", r.getFloat("avgSec_T"));
-                data.put("nb_ct", cib.getLong("nb_ct"));
-                data.put("perctpt", cib.getFloat("perctpt"));
+                service.put("nb_ca", cib.getLong("nb_ca"));
+                service.put("percapt", cib.getFloat("percapt"));
+                service.put("avgSec_T", r.getFloat("avgSec_T"));
+                service.put("nb_ct", cib.getLong("nb_ct"));
+                service.put("perctpt", cib.getFloat("perctpt"));
             } else {
-                data.put("nb_ca", 0);
-                data.put("percapt", 0.00);
-                data.put("avgSec_T", r.getFloat("avgSec_T"));
-                data.put("nb_ct", 0);
-                data.put("perctpt", 0.00);
+                service.put("nb_ca", 0);
+                service.put("percapt", 0.00);
+                service.put("avgSec_T", r.getFloat("avgSec_T"));
+                service.put("nb_ct", 0);
+                service.put("perctpt", 0.00);
             }
-            service.put("data", data);
             table2.add(service);
         }
 
