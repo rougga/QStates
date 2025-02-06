@@ -84,6 +84,10 @@
         <servlet-name>GetGltTable</servlet-name>
         <servlet-class>ma.rougga.qstates.api.report.GetGltTable</servlet-class>
     </servlet>
+    <servlet>
+        <servlet-name>GetName</servlet-name>
+        <servlet-class>ma.rougga.qstates.api.GetName</servlet-class>
+    </servlet>
     <servlet-mapping>
         <servlet-name>Settings</servlet-name>
         <url-pattern>/Settings</url-pattern>
@@ -189,6 +193,10 @@
     <servlet-mapping>
         <servlet-name>GetGltTable</servlet-name>
         <url-pattern>/getglttable</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>GetName</servlet-name>
+        <url-pattern>/getname</url-pattern>
     </servlet-mapping>
     <session-config>
         <session-timeout>

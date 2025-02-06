@@ -13,6 +13,7 @@ public  class AgenceController {
 
     public AgenceController() {
     }
+    
 
     // Method to insert a new row
     public static void insertParameter(String name, String value) {
