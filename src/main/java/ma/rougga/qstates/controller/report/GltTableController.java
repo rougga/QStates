@@ -1,20 +1,14 @@
 
 package ma.rougga.qstates.controller.report;
 
-import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.Date;
-import java.util.List;
 import javax.servlet.http.HttpServletRequest;
-import javax.xml.parsers.ParserConfigurationException;
 import ma.rougga.qstates.CfgHandler;
 import ma.rougga.qstates.PgConnection;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
-import org.xml.sax.SAXException;
 
 
 public class GltTableController {
