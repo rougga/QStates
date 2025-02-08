@@ -2,13 +2,10 @@ package ma.rougga.qstates.api;
 
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.sql.Connection;
-import java.sql.ResultSet;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import ma.rougga.qstates.CPConnection;
 import ma.rougga.qstates.controller.UtilisateurController;
 import org.json.simple.JSONObject;
 import org.slf4j.Logger;
