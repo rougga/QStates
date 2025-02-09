@@ -88,6 +88,30 @@
         <servlet-name>GetName</servlet-name>
         <servlet-class>ma.rougga.qstates.api.GetName</servlet-class>
     </servlet>
+    <servlet>
+        <servlet-name>GetCibles</servlet-name>
+        <servlet-class>ma.rougga.qstates.api.GetCibles</servlet-class>
+    </servlet>
+    <servlet>
+        <servlet-name>GetWaitingTickets</servlet-name>
+        <servlet-class>ma.rougga.qstates.api.GetWaitingTickets</servlet-class>
+    </servlet>
+    <servlet>
+        <servlet-name>GetThTTable</servlet-name>
+        <servlet-class>ma.rougga.qstates.api.report.GetThTTable</servlet-class>
+    </servlet>
+    <servlet>
+        <servlet-name>GetThTTTable</servlet-name>
+        <servlet-class>ma.rougga.qstates.api.report.GetThTTTable</servlet-class>
+    </servlet>
+    <servlet>
+        <servlet-name>GetThATable</servlet-name>
+        <servlet-class>ma.rougga.qstates.api.report.GetThATable</servlet-class>
+    </servlet>
+    <servlet>
+        <servlet-name>GetThSATable</servlet-name>
+        <servlet-class>ma.rougga.qstates.api.report.GetThSATable</servlet-class>
+    </servlet>
     <servlet-mapping>
         <servlet-name>Settings</servlet-name>
         <url-pattern>/Settings</url-pattern>
@@ -197,6 +221,30 @@
     <servlet-mapping>
         <servlet-name>GetName</servlet-name>
         <url-pattern>/getname</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>GetCibles</servlet-name>
+        <url-pattern>/getcibles</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>GetWaitingTickets</servlet-name>
+        <url-pattern>/getwaitingtickets</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>GetThTTable</servlet-name>
+        <url-pattern>/getthttable</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>GetThTTTable</servlet-name>
+        <url-pattern>/getthtttable</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>GetThATable</servlet-name>
+        <url-pattern>/getthatable</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>GetThSATable</servlet-name>
+        <url-pattern>/getthsatable</url-pattern>
     </servlet-mapping>
     <session-config>
         <session-timeout>

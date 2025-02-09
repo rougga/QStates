@@ -242,6 +242,7 @@ public class Stats {
             PgConnection con = new PgConnection();
             String SQL = "select "
                     + "b.name,"
+                    + "b.id,"
                     + "(select count(*) from t_ticket t where t.biz_type_id=b.id and t.status=0 and to_date(to_char(t.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE(?,'YYYY-MM-DD') AND TO_DATE(?,'YYYY-MM-DD') )as nb_t"
                     + " from "
                     + " t_biz_type b;";
@@ -262,7 +263,9 @@ public class Stats {
         }
         return table;
     }
-
+    
+    
+    
     public List getDealTicketsByService(String d1, String d2, HttpServletResponse res) throws IOException {
         List<ArrayList> table = new ArrayList<>();
         try {

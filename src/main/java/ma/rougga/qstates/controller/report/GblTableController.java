@@ -20,12 +20,10 @@ public class GblTableController {
     public GblTableController() {
     }
 
-    public JSONObject generateSimpleGblTable(String d1, String d2, HttpServletRequest request) throws IOException, ClassNotFoundException, SQLException, FileNotFoundException, ParserConfigurationException, SAXException {
+    public JSONObject generateSimpleGblTable(String d1, String d2) throws IOException, ClassNotFoundException, SQLException, FileNotFoundException, ParserConfigurationException, SAXException {
         d1 = (d1 == null) ? CfgHandler.format.format(new Date()) : d1;
         d2 = (d2 == null) ? CfgHandler.format.format(new Date()) : d2;
         JSONObject all = new JSONObject();
-        JSONArray result = new JSONArray();
-        CfgHandler cfg = new CfgHandler(request);
         JSONArray table2 = new JSONArray();
         String dateCon = " and to_date(to_char(t2.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + d1 + "','YYYY-MM-DD') AND TO_DATE('" + d2 + "','YYYY-MM-DD') ";
 

@@ -1,3 +1,4 @@
+
 package ma.rougga.qstates.api.report;
 
 import java.io.IOException;
@@ -6,13 +7,13 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import ma.rougga.qstates.controller.report.GblTableController;
+import ma.rougga.qstates.controller.report.ThSATableController;
 import org.json.simple.JSONObject;
 import org.slf4j.LoggerFactory;
 
-public class GetGblTable extends HttpServlet {
+public class GetThSATable extends HttpServlet {
 
-    private static final org.slf4j.Logger logger = LoggerFactory.getLogger(GetGblTable.class);
+     private static final org.slf4j.Logger logger = LoggerFactory.getLogger(GetThSATable.class);
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
@@ -25,7 +26,7 @@ public class GetGblTable extends HttpServlet {
             String date2 = request.getParameter("date2");
             JSONObject result = null;
             try {
-                result = new GblTableController().generateSimpleGblTable(date1, date2);
+                result = new ThSATableController().generateNdsaTable(date1, date2);
             } catch (Exception e) {
                 out.print(e.getMessage());
                 logger.error(e.getMessage());
