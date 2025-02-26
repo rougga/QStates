@@ -7,7 +7,7 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import ma.rougga.qstates.JsonGenerator;
+import ma.rougga.qstates.CfgHandler;
 import org.json.simple.JSONObject;
 
 public class OnlineCheck extends HttpServlet {
@@ -21,6 +21,7 @@ public class OnlineCheck extends HttpServlet {
             PrintWriter out = response.getWriter();
             JSONObject result = new JSONObject();
             result.put("isOnline", "true");
+            result.put("version", CfgHandler.VERSION);
             out.print(result);
         } catch (Exception ex) {
             System.err.println(ex.getMessage());

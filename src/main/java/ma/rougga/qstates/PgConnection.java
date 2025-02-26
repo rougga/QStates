@@ -10,7 +10,7 @@ public class PgConnection {
 
     private final String DRIVER = "org.postgresql.Driver";
    private final String CONNECTIONSTRING = "jdbc:postgresql://localhost:5433/postgres?characterEncoding=UTF-8";
-    // private final String CONNECTIONSTRING = "jdbc:postgresql://localhost:5432/postgres?characterEncoding=UTF-8";
+   //  private final String CONNECTIONSTRING = "jdbc:postgresql://localhost:5432/postgres?characterEncoding=UTF-8";
     private final String USER = "honyi";
     private final String PASSWORD = "honyi123";
     private Connection con=null;
