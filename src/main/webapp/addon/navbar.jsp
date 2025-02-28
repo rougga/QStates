@@ -3,6 +3,7 @@
 <%
     if (Objects.equals(session.getAttribute("user"), null)) {
         response.sendRedirect("/QStates/index.jsp");
+        return;
     }
 %>
 <nav class="navbar navbar-expand-lg navbar-dark " style="background-color: #b83dba;">

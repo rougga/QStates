@@ -31,7 +31,8 @@ import javax.servlet.ServletOutputStream;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.xml.parsers.ParserConfigurationException;
-import ma.rougga.qstates.handler.TitleHandler;
+import ma.rougga.qstates.controller.TitleController;
+import ma.rougga.qstates.modal.Title;
 import net.sf.jxls.exception.ParsePropertyException;
 import net.sf.jxls.transformer.XLSTransformer;
 import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
@@ -39,6 +40,8 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.xml.sax.SAXException;
 
 public class Export {
+
+    TitleController tc = new TitleController();
 
     public Export() {
     }
@@ -843,7 +846,7 @@ public class Export {
         try {
             String db = request.getSession().getAttribute("db") + "";
             TableGenerator tbl = new TableGenerator();
-            String title = new TitleHandler(request).getGblTitle() + " Du " + date1 + " Au " + date2;
+            String title = tc.getGblTitle() + " Du " + date1 + " Au " + date2;
             List<ArrayList<String>> gtable = tbl.generateGblTable(request, date1, date2, db);
             float[] columnWidths = {6, 7, 2, 2, 2, 2, 2, 3, 3, 3, 4, 2, 3, 4, 2, 3};
             return generatePDF(db, title, gtable, tbl.getGblCols(), columnWidths, response);
@@ -857,7 +860,7 @@ public class Export {
         try {
             String db = request.getSession().getAttribute("db") + "";
             TableGenerator tbl = new TableGenerator();
-            String title = new TitleHandler(request).getEmpTitle() + " Du " + date1 + " Au " + date2;
+            String title = tc.getEmpTitle() + " Du " + date1 + " Au " + date2;
             List<ArrayList<String>> gtable = tbl.generateEmpTable(request, date1, date2, db);
             float[] columnWidths = {6, 7, 2, 2, 2, 2, 2, 3, 3, 3, 4, 2, 3, 4, 2, 3};
             return generatePDF(db, title, gtable, tbl.getEmpCols(), columnWidths, response);
@@ -871,7 +874,7 @@ public class Export {
         try {
             String db = request.getSession().getAttribute("db") + "";
             TableGenerator tbl = new TableGenerator();
-            String title = new TitleHandler(request).getEmpSerTitle() + " Du " + date1 + " Au " + date2;
+            String title = tc.getEmpSerTitle() + " Du " + date1 + " Au " + date2;
             List<ArrayList<String>> gtable = tbl.generateEmpServiceTable(request, date1, date2, db);
             float[] columnWidths = {6, 7, 7, 2, 2, 2, 2, 2, 3, 3, 3, 4, 2, 3, 4, 2, 3};
             return generatePDF(db, title, gtable, tbl.getEmpServiceCols(), columnWidths, response);
@@ -885,7 +888,7 @@ public class Export {
         try {
             String db = request.getSession().getAttribute("db") + "";
             TableGenerator tbl = new TableGenerator();
-            String title = new TitleHandler(request).getGchTitle() + " Du " + date1 + " Au " + date2;
+            String title = tc.getGchTitle() + " Du " + date1 + " Au " + date2;
             List<ArrayList<String>> gtable = tbl.generateGchTable(request, date1, date2, db);
             float[] columnWidths = {6, 6, 2, 2, 2, 2, 2, 3, 3, 3, 4, 2, 3, 4, 2, 3};
             return generatePDF(db, title, gtable, tbl.getGchCols(), columnWidths, response);
@@ -899,7 +902,7 @@ public class Export {
         try {
             String db = request.getSession().getAttribute("db") + "";
             TableGenerator tbl = new TableGenerator();
-            String title = new TitleHandler(request).getGchServTitle() + " Du " + date1 + " Au " + date2;
+            String title = tc.getGchServTitle() + " Du " + date1 + " Au " + date2;
             List<ArrayList<String>> gtable = tbl.generateGchServiceTable(request, date1, date2, db);
             float[] columnWidths = {6, 6, 7, 2, 2, 2, 2, 2, 3, 3, 3, 4, 2, 3, 4, 2, 3};
             return generatePDF(db, title, gtable, tbl.getGchServiceCols(), columnWidths, response);
@@ -915,7 +918,7 @@ public class Export {
             String filename = getRandomName() + ".pdf";
             String db = request.getSession().getAttribute("db") + "";
             TableGenerator tbl = new TableGenerator();
-            String title = new TitleHandler(request).getNdtTitle() + " Du " + date1 + " Au " + date2;
+            String title = tc.getNdtTitle() + " Du " + date1 + " Au " + date2;
             List<ArrayList<String>> gtable = tbl.generateNdtTable(request, date1, date2, db);
 
             if (gtable != null && gtable.size() > 0) {
@@ -1031,12 +1034,12 @@ public class Export {
     }
 
     public int exportNdttPDF(HttpServletResponse response, HttpServletRequest request, String date1, String date2) {
-         System.err.println("Printing PDF...");
+        System.err.println("Printing PDF...");
         try {
             String filename = getRandomName() + ".pdf";
             String db = request.getSession().getAttribute("db") + "";
             TableGenerator tbl = new TableGenerator();
-            String title = new TitleHandler(request).getNdttTitle() + " Du " + date1 + " Au " + date2;
+            String title = tc.getNdttTitle() + " Du " + date1 + " Au " + date2;
             List<ArrayList<String>> gtable = tbl.generateNdttTable(request, date1, date2, db);
 
             if (gtable != null && gtable.size() > 0) {
@@ -1152,12 +1155,12 @@ public class Export {
     }
 
     public int exportNdtaPDF(HttpServletResponse response, HttpServletRequest request, String date1, String date2) {
-         System.err.println("Printing PDF...");
+        System.err.println("Printing PDF...");
         try {
             String filename = getRandomName() + ".pdf";
             String db = request.getSession().getAttribute("db") + "";
             TableGenerator tbl = new TableGenerator();
-            String title = new TitleHandler(request).getNdtaTitle() + " Du " + date1 + " Au " + date2;
+            String title = tc.getNdtaTitle() + " Du " + date1 + " Au " + date2;
             List<ArrayList<String>> gtable = tbl.generateNdtaTable(request, date1, date2, db);
 
             if (gtable != null && gtable.size() > 0) {
@@ -1278,7 +1281,7 @@ public class Export {
             String filename = getRandomName() + ".pdf";
             String db = request.getSession().getAttribute("db") + "";
             TableGenerator tbl = new TableGenerator();
-            String title = new TitleHandler(request).getNdtsaTitle() + " Du " + date1 + " Au " + date2;
+            String title = tc.getNdtsaTitle() + " Du " + date1 + " Au " + date2;
             List<ArrayList<String>> gtable = tbl.generateNdtsaTable(request, date1, date2, db);
 
             if (gtable != null && gtable.size() > 0) {
@@ -1399,7 +1402,7 @@ public class Export {
             String filename = getRandomName() + ".pdf";
             String db = request.getSession().getAttribute("db") + "";
             TableGenerator tbl = new TableGenerator();
-            String title = new TitleHandler(request).getGlaTitle() + " Du " + date1 + " Au " + date2;
+            String title = tc.getGlaTitle() + " Du " + date1 + " Au " + date2;
             List<ArrayList<String>> gtable = tbl.generateGlaTable(request, date1, date2, db);
 
             if (gtable != null && gtable.size() > 0) {
@@ -1520,7 +1523,7 @@ public class Export {
             String filename = getRandomName() + ".pdf";
             String db = request.getSession().getAttribute("db") + "";
             TableGenerator tbl = new TableGenerator();
-            String title = new TitleHandler(request).getGltTitle() + " Du " + date1 + " Au " + date2;
+            String title = tc.getGltTitle() + " Du " + date1 + " Au " + date2;
             List<ArrayList<String>> gtable = tbl.generateGltTable(request, date1, date2, db);
 
             if (gtable != null && gtable.size() > 0) {

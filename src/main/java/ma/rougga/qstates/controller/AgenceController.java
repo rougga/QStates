@@ -80,4 +80,20 @@ public  class AgenceController {
     public static String getGoalTr() {
         return getParameter("goal_t");
     }
+    
+    public String getBranchName() {
+        String BRANCH_NAME = "BORNE ?";
+        try {
+            Connection con = new CPConnection().getConnection();
+            ResultSet r = con.createStatement().executeQuery("SELECT value FROM t_basic_par where name='BRANCH_NAME';");
+            if (r.next()) {
+                BRANCH_NAME = r.getString("value");
+            }
+            con.close();
+        } catch (SQLException e) {
+            logger.error(e.getMessage());
+        }
+        return BRANCH_NAME;
+    }
+
 }

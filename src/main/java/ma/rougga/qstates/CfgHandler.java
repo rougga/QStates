@@ -30,11 +30,8 @@ public class CfgHandler {
     public static final String COMPANY = "ROUGGA";
     public static final String CLIENT = "NST";
     //Data files
-    private final static String CFG_FILE = "\\cfg\\cfg.properties";
-    private final static String USER_FILE = "\\cfg\\db\\users.xml";
-    private final static String CIBLE_FILE = "\\cfg\\db\\cible.xml";
+    
     private final static String EXTRA_FILE = "\\cfg\\db\\extra.xml";
-    private final static String TITLE_FILE = "\\cfg\\db\\title.xml";
     //excel
 
     private final String gblTempExcel = "\\cfg\\excel\\gbltemp.xlsx";
@@ -56,9 +53,9 @@ public class CfgHandler {
     private static HttpServletRequest request;
     private static FileReader FR = null;
     private static Properties prop = null;
-    
+
     public final static SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
-    
+
     public static String getFormatedDateAsString(Date date) {
         SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         if (date != null) {
@@ -66,7 +63,7 @@ public class CfgHandler {
         } else {
             return null;
         }
-        
+
     }
 
     public static Date getFormatedDateAsDate(String date) {
@@ -89,8 +86,8 @@ public class CfgHandler {
         int seconds = (int) (Sec % 60);
         return String.format("%02d:%02d:%02d", hours, minutes, seconds);
     }
-    
-     public static String getGrade(String grd) {
+
+    public static String getGrade(String grd) {
         switch (grd) {
             case "adm":
                 return "Administrateur";
@@ -101,33 +98,19 @@ public class CfgHandler {
         }
         return "erreur!";
     }
-    
+
+    public CfgHandler() {
+    }
+
     public CfgHandler(HttpServletRequest r) throws FileNotFoundException, IOException {
         this.request = r;
     }
 
-    public static String getPropertie(String name,HttpServletRequest req) throws IOException {
-
-        prop = new Properties();
-        FR = new FileReader(getCfgFile(req));
-        prop.load(FR);
-        String val = prop.getProperty(name);
-        return val;
-
-    }
 
     public void closeFR() throws IOException {
         FR.close();
     }
 
-    public void addPropertie(String name, String val,HttpServletRequest req) throws FileNotFoundException, IOException {
-        Properties p = new Properties();
-        p.setProperty(name, val);
-        FileOutputStream f = new FileOutputStream(getCfgFile(req));
-        p.store(f, "daasdasd");
-        f.close();
-        p.clear();
-    }
 
     public static Document getXml(String path) throws ParserConfigurationException, SAXException, IOException {
         File xml = new File(path);
@@ -138,57 +121,7 @@ public class CfgHandler {
         return doc;
     }
 
-    public int getCibleA(String id,HttpServletRequest req) throws FileNotFoundException, IOException, ParserConfigurationException, SAXException {
 
-        int cibleA = 0;
-        String path = getCibleFile(req);
-        Document doc = getXml(path);
-        Node cibles = doc.getFirstChild();
-        NodeList nList = cibles.getChildNodes();
-        for (int i = 0; i < nList.getLength(); i++) {
-            Node nNode = nList.item(i);
-            if (nNode.getNodeType() == Node.ELEMENT_NODE) {
-                Element eElement = (Element) nNode;
-                if (Objects.equals(eElement.getElementsByTagName("id").item(0).getTextContent(), id)) {
-                    cibleA = Integer.parseInt(eElement.getElementsByTagName("cibleA").item(0).getTextContent());
-                }
-            }
-
-        }
-        return cibleA;
-    }
-
-    public int getCibleT(String id,HttpServletRequest req) throws FileNotFoundException, IOException, ParserConfigurationException, SAXException {
-
-        int cibleT = 0;
-        String path = getCibleFile(req);
-        Document doc = getXml(path);
-        Node cibles = doc.getFirstChild();
-        NodeList nList = cibles.getChildNodes();
-        for (int i = 0; i < nList.getLength(); i++) {
-            Node nNode = nList.item(i);
-            if (nNode.getNodeType() == Node.ELEMENT_NODE) {
-                Element eElement = (Element) nNode;
-                if (Objects.equals(eElement.getElementsByTagName("id").item(0).getTextContent(), id)) {
-                    cibleT = Integer.parseInt(eElement.getElementsByTagName("cibleT").item(0).getTextContent());
-                }
-            }
-
-        }
-        return cibleT;
-    }
-
-    public static String getCfgFile(HttpServletRequest req) {
-        return req.getServletContext().getRealPath(CFG_FILE);
-    }
-
-    public static String getUserFile(HttpServletRequest req) {
-        return req.getServletContext().getRealPath(USER_FILE);
-    }
-
-    public static String getCibleFile(HttpServletRequest req) {
-        return req.getServletContext().getRealPath(CIBLE_FILE);
-    }
 
     public static String getExtraFile(HttpServletRequest req) {
         return req.getServletContext().getRealPath(EXTRA_FILE);
@@ -230,10 +163,5 @@ public class CfgHandler {
         return request.getServletContext().getRealPath(aplTempExcel);
     }
 
-    public String getTitleFile() {
-        return request.getServletContext().getRealPath(TITLE_FILE);
-    }
 
-    
-    
 }

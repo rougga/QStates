@@ -9,7 +9,6 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import ma.rougga.qstates.controller.TitleController;
-import ma.rougga.qstates.handler.TitleHandler;
 import ma.rougga.qstates.modal.Title;
 import org.apache.commons.lang3.StringUtils;
 

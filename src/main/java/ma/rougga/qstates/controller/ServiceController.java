@@ -3,7 +3,6 @@ package ma.rougga.qstates.controller;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.Statement;
 import java.util.ArrayList;
 import ma.rougga.qstates.CPConnection;
 import ma.rougga.qstates.modal.Service;
@@ -13,19 +12,15 @@ public class ServiceController {
 
     private static final org.slf4j.Logger logger = LoggerFactory.getLogger(ServiceController.class);
     
-    private Statement stm;
 
     public ServiceController() {
     }
 
-    public ServiceController(Statement stm) {
-        this.stm = stm;
-    }
 
     public ArrayList<Service> getAll() {
         try {
             Connection con = new CPConnection().getConnection();
-            ArrayList<Service> services = new ArrayList();
+            ArrayList<Service> services = new ArrayList<>();
 
             ResultSet r = con.createStatement().executeQuery("select * from t_biz_type;");
             while (r.next()) {

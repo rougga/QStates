@@ -30,7 +30,6 @@ public class GetOldestTicketDate extends HttpServlet {
             } else {
                 result.put("oldestDate", null);
             }
-            System.err.println(oldestTicket.getId());
             out.print(result);
         } catch (IOException ex) {
             System.err.println(ex.getMessage());

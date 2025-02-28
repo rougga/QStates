@@ -15,7 +15,6 @@ import javax.servlet.http.HttpServletRequest;
 import javax.xml.parsers.ParserConfigurationException;
 import ma.rougga.qstates.controller.CibleController;
 import ma.rougga.qstates.controller.TitleController;
-import ma.rougga.qstates.handler.TitleHandler;
 import ma.rougga.qstates.modal.Cible;
 import org.xml.sax.SAXException;
 
@@ -2063,7 +2062,6 @@ public class TableGenerator {
         type = (type == null) ? "gbl" : type.toLowerCase().trim();
         Map data = new HashMap();
         List<ArrayList<String>> T;
-        TitleHandler th = new TitleHandler(request);
         TitleController tc = new TitleController();
         switch (type) {
             case "gbl":

@@ -1,11 +1,5 @@
-<configuration debug="true">
+<configuration debug="false">
     <appender name="Console" class="ch.qos.logback.core.ConsoleAppender">
-        <encoder>
-            <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n</pattern>
-        </encoder>
-    </appender>
-    <appender name="FileAppender" class="ch.qos.logback.core.FileAppender">
-        <file>logs/app.log</file>  <!-- Log file path -->
         <encoder>
             <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n</pattern>
         </encoder>
@@ -13,6 +7,5 @@
 
     <root level="info">
         <appender-ref ref="Console"/>
-        <appender-ref ref="FileAppender"/>
     </root>
 </configuration>

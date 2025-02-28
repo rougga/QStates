@@ -6,6 +6,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+
 import ma.rougga.qstates.CPConnection;
 import ma.rougga.qstates.modal.Title;
 import org.slf4j.LoggerFactory;
@@ -124,4 +125,156 @@ public class TitleController {
         }
     }
 
+    public String getGblTitle() {
+        String title = "Rapport Globale";
+        Title t = this.getTitleByType("gbl");
+        if (t != null) {
+            title = t.getValue();
+        }
+        return title;
+    }
+
+    public String getEmpTitle() {
+        String title = "Rapport Employé";
+        Title t = this.getTitleByType("emp");
+        if (t != null) {
+            title = t.getValue();
+        }
+        return title;
+    }
+
+    public String getEmpSerTitle() {
+        String title = "Rapport Employé par service";
+        Title t = this.getTitleByType("empser");
+        if (t != null) {
+            title = t.getValue();
+        }
+        return title;
+    }
+
+    public String getGchTitle() {
+        String title = "Rapport Guichet";
+        Title t = this.getTitleByType("gch");
+        if (t != null) {
+            title = t.getValue();
+        }
+        return title;
+    }
+
+    public String getGchServTitle() {
+        String title = "Rapport Guichet par service";
+        Title t = this.getTitleByType("gchserv");
+        if (t != null) {
+            title = t.getValue();
+        }
+        return title;
+    }
+
+    public String getGlaTitle() {
+        String title = "Grille d attente";
+        Title t = this.getTitleByType("gla");
+        if (t != null) {
+            title = t.getValue();
+        }
+        return title;
+    }
+
+    public String getGltTitle() {
+        String title = "Grille de traitement";
+        Title t = this.getTitleByType("glt");
+        if (t != null) {
+            title = t.getValue();
+        }
+        return title;
+    }
+
+    public String getNdtTitle() {
+        String title = "Nombre de tickets edités";
+        Title t = this.getTitleByType("ndt");
+        if (t != null) {
+            title = t.getValue();
+        }
+        return title;
+    }
+
+    public String getNdttTitle() {
+        String title = "Nombre de tickets traités";
+        Title t = this.getTitleByType("ndtt");
+        if (t != null) {
+            title = t.getValue();
+        }
+        return title;
+    }
+
+    public String getNdtaTitle() {
+        String title = "Nombre de tickets absents";
+        Title t = this.getTitleByType("ndta");
+        if (t != null) {
+            title = t.getValue();
+        }
+        return title;
+    }
+
+    public String getNdtsaTitle() {
+        String title = "Nombre de tickets sans affectation";
+        Title t = this.getTitleByType("ndtsa");
+        if (t != null) {
+            title = t.getValue();
+        }
+        return title;
+    }
+
+    public String getCnxTitle() {
+        String title = "Connexions";
+        Title t = this.getTitleByType("cnx");
+        if (t != null) {
+            title = t.getValue();
+        }
+        return title;
+    }
+
+    public String getRempTitle() {
+        String title = "Rendement Employés";
+        Title t = this.getTitleByType("remp");
+        if (t != null) {
+            title = t.getValue();
+        }
+        return title;
+    }
+
+    public String getSerTitle() {
+        String title = "Supervision: Service";
+        Title t = this.getTitleByType("ser");
+        if (t != null) {
+            title = t.getValue();
+        }
+        return title;
+    }
+
+    public String getSgchTitle() {
+        String title = "Supervision: Guichet";
+        Title t = this.getTitleByType("sgch");
+        if (t != null) {
+            title = t.getValue();
+        }
+        return title;
+    }
+
+    public String getAplTitle() {
+        String title = "Détail des appels";
+        Title t = this.getTitleByType("apl");
+        if (t != null) {
+            title = t.getValue();
+        }
+        return title;
+    }
+
+    public String getTaskTitle() {
+        String title = "Rapport des Taches";
+        Title t = this.getTitleByType("tch");
+        if (t != null) {
+            title = t.getValue();
+        }
+        return title;
+    }
 }

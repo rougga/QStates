@@ -112,6 +112,10 @@
         <servlet-name>GetThSATable</servlet-name>
         <servlet-class>ma.rougga.qstates.api.report.GetThSATable</servlet-class>
     </servlet>
+    <servlet>
+        <servlet-name>AgenceAPI</servlet-name>
+        <servlet-class>ma.rougga.qstates.api.AgenceAPI</servlet-class>
+    </servlet>
     <servlet-mapping>
         <servlet-name>Settings</servlet-name>
         <url-pattern>/Settings</url-pattern>
@@ -245,6 +249,10 @@
     <servlet-mapping>
         <servlet-name>GetThSATable</servlet-name>
         <url-pattern>/getthsatable</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>AgenceAPI</servlet-name>
+        <url-pattern>/agence</url-pattern>
     </servlet-mapping>
     <session-config>
         <session-timeout>
