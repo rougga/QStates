@@ -1,17 +1,12 @@
 package ma.rougga.qstates.servlets;
 
 import java.io.IOException;
-import java.sql.SQLException;
 import java.util.Objects;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import ma.rougga.qstates.CfgHandler;
-import ma.rougga.qstates.PgConnection;
-import ma.rougga.qstates.controller.ServiceController;
 import ma.rougga.qstates.controller.TaskController;
 import ma.rougga.qstates.modal.Task;
 import org.apache.commons.lang3.StringUtils;
@@ -35,16 +30,11 @@ public class AddTask extends HttpServlet {
                 String serviceId = request.getParameter("serviceId");
                 //empty check
                 if (StringUtils.isNoneBlank(taskName, serviceId)) {
-                    System.err.println("Name:" + taskName + " Id: " + serviceId);
-                    try {
-                        new TaskController(new PgConnection().getStatement()).add(
-                                new Task(taskName, serviceId)
-                        );
+                    TaskController tc = new TaskController();
+                    if (tc.add(new Task(taskName, serviceId))) {
                         response.sendRedirect(CfgHandler.PAGE_TASK + "?err=Tache%20et%20ajouter");
-                        
-                    } catch (ClassNotFoundException | SQLException ex) {
-                        response.sendRedirect(CfgHandler.PAGE_TASK + "?err=" + ex.getMessage());
-                        logger.error(ex.getMessage());
+                    }else{
+                        response.sendRedirect(CfgHandler.PAGE_TASK + "?err=Tache%20net%20pas%20ajouter");
                     }
                 }
             } else {

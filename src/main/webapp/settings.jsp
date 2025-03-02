@@ -1,3 +1,5 @@
+<%@page import="ma.rougga.qstates.modal.Service"%>
+<%@page import="ma.rougga.qstates.controller.ServiceController"%>
 <%@page import="ma.rougga.qstates.controller.AgenceController"%>
 <%@page import="ma.rougga.qstates.modal.Utilisateur"%>
 <%@page import="ma.rougga.qstates.controller.UtilisateurController"%>
@@ -10,16 +12,18 @@
 <%@page import="org.w3c.dom.Node"%>
 <%@page import="org.w3c.dom.Document"%>
 <%@page import="java.sql.ResultSet"%>
-<%@page import="ma.rougga.qstates.PgConnection"%>
 <%@page contentType="text/html" pageEncoding="UTF-8"%>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%
     if (!Objects.equals(session.getAttribute("grade"), "adm")) {
         response.sendRedirect("./home.jsp");
+        return;
     }
     CibleController cc = new CibleController();
-    List<Cible> cibles = cc.getAllCibles();
+    ServiceController sc = new ServiceController();
     UtilisateurController uc = new UtilisateurController();
+    List<Service> services = sc.getAll();
+    List<Cible> cibles = cc.getAllCibles();
     List<Utilisateur> users = uc.getAllUtilisateur();
 %>
 <!DOCTYPE html>
@@ -161,8 +165,8 @@
                         </thead>
 
                         <tbody class="">
-                            <%                                
-                                
+                            <%
+
                                 String path = CfgHandler.getExtraFile(request);
 
                                 Document doc = CfgHandler.getXml(path);
@@ -205,11 +209,11 @@
 
                             <tr class="clickable-row4">
                                 <td>Max Attente</td>
-                                <td><%= AgenceController.getMaxAtt() %></td>
+                                <td><%= AgenceController.getMaxAtt()%></td>
                             </tr>
                             <tr class="clickable-row4">
                                 <td>But Traitement</td>
-                                <td><%= AgenceController.getGoalTr() %></td>
+                                <td><%= AgenceController.getGoalTr()%></td>
                             </tr>
 
                         </tbody>
@@ -239,15 +243,11 @@
                                         <select class="form-control" id="serviceName" name="service" required>
 
                                             <option selected disabled value="0">Sélectionner service:</option>
-                                            <%
-                                                ResultSet r = new PgConnection().getStatement().executeQuery("SELECT id,name FROM t_biz_type;");
-                                                while (r.next()) {
-                                            %><%="<option value='" + r.getString("id") + "'>"
-                                                    + r.getString("name")
-                                                    + "</option>"%><%
-
-                                                        }
-                                            %>
+                                            <c:forEach var="service" items="<%=services%>" varStatus="status">
+                                                <option value='<c:out value="${service.getId()}"/>'>
+                                                    <c:out value="${service.getName()}"/>
+                                                </option>
+                                            </c:forEach>
                                         </select>
                                     </div>
                                     <div class="form-group">
@@ -358,14 +358,11 @@
                                         <label for="serviceName">Service:</label>
                                         <select class="form-control" id="serviceNameExtra" name="serviceNameExtra" required>>
                                             <option selected disabled value="0">Sélectionner service:</option>
-                                            <%                                 r = new PgConnection().getStatement().executeQuery("SELECT id,name FROM t_biz_type;");
-                                                while (r.next()) {
-                                            %><%="<option value='" + r.getString("id") + "'>"
-                                                    + r.getString("name")
-                                                    + "</option>"%><%
-
-                                                        }
-                                            %>
+                                            <c:forEach var="service" items="<%=services%>" varStatus="status">
+                                                <option value='<c:out value="${service.getId()}"/>'>
+                                                    <c:out value="${service.getName()}"/>
+                                                </option>
+                                            </c:forEach>
                                         </select>
                                     </div>
                                     <div class="form-group">
@@ -403,11 +400,11 @@
 
                                     <div class="form-group">
                                         <label for="maxA">Max Attente:</label><br>
-                                        <input type="number" class="form-control" id="goalAH" name="maxA" placeholder="Nb." min="0" value="<%= AgenceController.getMaxAtt() %>" required>
+                                        <input type="number" class="form-control" id="goalAH" name="maxA" placeholder="Nb." min="0" value="<%= AgenceController.getMaxAtt()%>" required>
                                     </div>
                                     <div class="form-group">
                                         <label for="goalT">But Traitement:</label><br>
-                                        <input type="number" class="form-control" id="goalTH" name="goalT" placeholder="Nb." min="0" value="<%= AgenceController.getGoalTr() %>" required>
+                                        <input type="number" class="form-control" id="goalTH" name="goalT" placeholder="Nb." min="0" value="<%= AgenceController.getGoalTr()%>" required>
                                     </div>
                                     <div class="">
                                         <input type="hidden" class="form-control" name="type" value="goal">

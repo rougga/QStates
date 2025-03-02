@@ -2,6 +2,7 @@ package ma.rougga.qstates;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.text.ParseException;
@@ -13,13 +14,18 @@ import java.util.List;
 import java.util.Map;
 import javax.servlet.http.HttpServletRequest;
 import javax.xml.parsers.ParserConfigurationException;
+
 import ma.rougga.qstates.controller.CibleController;
 import ma.rougga.qstates.controller.TitleController;
+import ma.rougga.qstates.controller.report.EmpTableController;
 import ma.rougga.qstates.modal.Cible;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.xml.sax.SAXException;
 
 public class TableGenerator {
 
+    private static final Logger logger = LoggerFactory.getLogger(TableGenerator.class);
     private final SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
     private final SimpleDateFormat format2 = new SimpleDateFormat("dd-MM-yyyy");
     private String DB;
@@ -50,7 +56,6 @@ public class TableGenerator {
     private String[] taskCols;
 
     public TableGenerator() {
-
         this.gblCols = new String[]{"Site", "Service", "Nb. Tickets", "Nb. Traités", "Nb. Absents", "Nb. Traités <1mn", "Nb. Sans affectation", "Absents/Nb. Tickets(%)", "Traités<1mn/Nb. Tickets(%)", "Sans affect/Nb. Tickets(%)", "Moyenne d'attente", ">Cible", "%Cible", "Moyenne Traitement", ">Cible", "%Cible"};
         this.empCols = new String[]{"Site", "Employé", "Nb. Tickets", "Nb. Traités", "Nb. Absents", "Nb. Traités <1mn", "Nb. Sans affectation", "Absents/Nb. Tickets(%)", "Traités<1mn/Nb. Tickets(%)", "Sans affect/Nb. Tickets(%)", "Moyenne d'attente", ">Cible", "%Cible", "Moyenne Traitement", ">Cible", "%Cible"};
         this.empServiceCols = new String[]{"Site", "Employé", "Service", "Nb. Tickets", "Nb. Traités", "Nb. Absents", "Nb. Traités <1mn", "Nb. Sans affectation", "Absents/Nb. Tickets(%)", "Traités<1mn/Nb. Tickets(%)", "Sans affect/Nb. Tickets(%)", "Moyenne d'attente", ">Cible", "%Cible", "Moyenne Traitement", ">Cible", "%Cible"};
@@ -77,468 +82,472 @@ public class TableGenerator {
         return String.format("%02d:%02d:%02d", hours, minutes, seconds);
     }
 
-    public List<ArrayList<String>> generateGblTable(HttpServletRequest request, String d1, String d2, String db) throws SQLException, IOException, ClassNotFoundException, FileNotFoundException, ParserConfigurationException, SAXException, Exception {
+    public List<ArrayList<String>> generateGblTable(HttpServletRequest request, String d1, String d2, String db) {
         this.date1 = (d1 == null) ? format.format(new Date()) : d1;
         this.date2 = (d2 == null) ? format.format(new Date()) : d2;
         this.DB = db;
-        CfgHandler cfg = new CfgHandler(request);
-        String dateCon = " and to_date(to_char(t2.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') ";
+        try (Connection con = new CPConnection().getConnection()) {
+            String dateCon = " and to_date(to_char(t2.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') ";
 
-        String gblSQL2 = "SELECT "
-                + " g1.BIZ_TYPE_ID,"
-                + " G1.NAME,"
-                + " G1.NB_T,"
-                + " G1.NB_TT, "
-                + "G1.NB_A,"
-                + " G1.NB_TL1,"
-                + " G1.NB_SA,"
-                + " CASE "
-                + "WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric "
-                + "ELSE CAST((G1.NB_A::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2)) "
-                + "END AS PERAPT,"
-                + " CASE"
-                + " WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric"
-                + " ELSE CAST((G1.NB_TL1::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2)) "
-                + "END AS PERTL1pt,"
-                + " CASE WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric "
-                + "ELSE CAST((G1.NB_SA::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2)) "
-                + "END AS PERSAPT , "
-                + "G1.AVGSEC_A, G1.avgsec_T "
-                + "from "
-                + "( select "
-                + "t1.biz_type_id,"
-                + " b.name, "
-                + "(SELECT COUNT(*) FROM T_TICKET T2 WHERE T2.BIZ_TYPE_ID = T1.BIZ_TYPE_ID " + dateCon + " ) AS NB_T,"
-                + " (SELECT COUNT(*) FROM T_TICKET T2 WHERE T2.BIZ_TYPE_ID = T1.BIZ_TYPE_ID AND T2.STATUS = 4 " + dateCon + " ) AS NB_TT,"
-                + " (SELECT COUNT(*) FROM T_TICKET T2 WHERE T2.BIZ_TYPE_ID = T1.BIZ_TYPE_ID AND T2.STATUS = 2 " + dateCon + " ) AS NB_A,"
-                + " (SELECT COUNT(*) FROM T_TICKET T2 WHERE T2.BIZ_TYPE_ID = T1.BIZ_TYPE_ID AND DATE_PART('epoch'::text, T2.FINISH_TIME - T2.START_TIME)::numeric / 60::numeric <= 1 AND T2.STATUS = 4 " + dateCon + " ) AS NB_TL1,"
-                + " (SELECT COUNT(*) FROM T_TICKET T2 WHERE T2.BIZ_TYPE_ID = T1.BIZ_TYPE_ID AND T2.STATUS = 0 " + dateCon + " ) AS NB_SA,"
-                + " (SELECT AVG(DATE_PART('epoch'::text, T2.CALL_TIME - T2.TICKET_TIME)::numeric) FROM T_TICKET T2 WHERE T2.BIZ_TYPE_ID = T1.BIZ_TYPE_ID and T2.call_time is not null  " + dateCon + " ) AS AVGSEC_A, "
-                + " (SELECT AVG(DATE_PART('epoch'::text, T2.FINISH_TIME - T2.START_TIME)::numeric) FROM T_TICKET T2 WHERE T2.BIZ_TYPE_ID = T1.BIZ_TYPE_ID AND T2.STATUS = 4 " + dateCon + " ) AS AVGSEC_T FROM T_TICKET T1, T_BIZ_TYPE B WHERE T1.BIZ_TYPE_ID = B.ID AND TO_DATE(TO_CHAR(T1.TICKET_TIME,'YYYY-MM-DD'),'YYYY-MM-DD') BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') GROUP BY T1.BIZ_TYPE_ID, B.NAME ) G1 ;";
+            String gblSQL2 = "SELECT "
+                    + " g1.BIZ_TYPE_ID,"
+                    + " G1.NAME,"
+                    + " G1.NB_T,"
+                    + " G1.NB_TT, "
+                    + "G1.NB_A,"
+                    + " G1.NB_TL1,"
+                    + " G1.NB_SA,"
+                    + " CASE "
+                    + "WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric "
+                    + "ELSE CAST((G1.NB_A::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2)) "
+                    + "END AS PERAPT,"
+                    + " CASE"
+                    + " WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric"
+                    + " ELSE CAST((G1.NB_TL1::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2)) "
+                    + "END AS PERTL1pt,"
+                    + " CASE WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric "
+                    + "ELSE CAST((G1.NB_SA::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2)) "
+                    + "END AS PERSAPT , "
+                    + "G1.AVGSEC_A, G1.avgsec_T "
+                    + "from "
+                    + "( select "
+                    + "t1.biz_type_id,"
+                    + " b.name, "
+                    + "(SELECT COUNT(*) FROM T_TICKET T2 WHERE T2.BIZ_TYPE_ID = T1.BIZ_TYPE_ID " + dateCon + " ) AS NB_T,"
+                    + " (SELECT COUNT(*) FROM T_TICKET T2 WHERE T2.BIZ_TYPE_ID = T1.BIZ_TYPE_ID AND T2.STATUS = 4 " + dateCon + " ) AS NB_TT,"
+                    + " (SELECT COUNT(*) FROM T_TICKET T2 WHERE T2.BIZ_TYPE_ID = T1.BIZ_TYPE_ID AND T2.STATUS = 2 " + dateCon + " ) AS NB_A,"
+                    + " (SELECT COUNT(*) FROM T_TICKET T2 WHERE T2.BIZ_TYPE_ID = T1.BIZ_TYPE_ID AND DATE_PART('epoch'::text, T2.FINISH_TIME - T2.START_TIME)::numeric / 60::numeric <= 1 AND T2.STATUS = 4 " + dateCon + " ) AS NB_TL1,"
+                    + " (SELECT COUNT(*) FROM T_TICKET T2 WHERE T2.BIZ_TYPE_ID = T1.BIZ_TYPE_ID AND T2.STATUS = 0 " + dateCon + " ) AS NB_SA,"
+                    + " (SELECT AVG(DATE_PART('epoch'::text, T2.CALL_TIME - T2.TICKET_TIME)::numeric) FROM T_TICKET T2 WHERE T2.BIZ_TYPE_ID = T1.BIZ_TYPE_ID and T2.call_time is not null  " + dateCon + " ) AS AVGSEC_A, "
+                    + " (SELECT AVG(DATE_PART('epoch'::text, T2.FINISH_TIME - T2.START_TIME)::numeric) FROM T_TICKET T2 WHERE T2.BIZ_TYPE_ID = T1.BIZ_TYPE_ID AND T2.STATUS = 4 " + dateCon + " ) AS AVGSEC_T FROM T_TICKET T1, T_BIZ_TYPE B WHERE T1.BIZ_TYPE_ID = B.ID AND TO_DATE(TO_CHAR(T1.TICKET_TIME,'YYYY-MM-DD'),'YYYY-MM-DD') BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') GROUP BY T1.BIZ_TYPE_ID, B.NAME ) G1 ;";
 
-        String subTotalSQL = "SELECT G1.NB_T, "
-                + "G1.NB_TT, "
-                + "G1.NB_A, "
-                + "G1.NB_TL1, "
-                + "G1.NB_SA, "
-                + "CASE "
-                + "WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric "
-                + "ELSE CAST((G1.NB_A::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2)) "
-                + "END AS PERAPT, "
-                + "CASE "
-                + "WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric "
-                + "ELSE CAST((G1.NB_TL1::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2)) "
-                + "END AS PERTL1PT, "
-                + "CASE "
-                + "WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric "
-                + "ELSE CAST((G1.NB_SA::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2)) "
-                + "END AS PERSAPT, "
-                + "G1.AVGSEC_A, "
-                + "G1.AVGSEC_T "
-                + "FROM "
-                + "(SELECT "
-                + "(SELECT COUNT(*) "
-                + "FROM T_TICKET T2 "
-                + "WHERE 1 = 1 "
-                + " " + dateCon + " ) AS NB_T, "
-                + " "
-                + "(SELECT COUNT(*) "
-                + "FROM T_TICKET T2 "
-                + "WHERE T2.STATUS = 4 "
-                + " " + dateCon + " ) AS NB_TT, "
-                + " "
-                + "(SELECT COUNT(*) "
-                + "FROM T_TICKET T2 "
-                + "WHERE T2.STATUS = 2 "
-                + " " + dateCon + " ) AS NB_A, "
-                + " "
-                + "(SELECT COUNT(*) "
-                + "FROM T_TICKET T2 "
-                + "WHERE DATE_PART('epoch'::text, T2.FINISH_TIME - T2.START_TIME)::numeric / 60::numeric <= 1 "
-                + "AND T2.STATUS = 4 "
-                + " " + dateCon + " ) AS NB_TL1, "
-                + " "
-                + "(SELECT COUNT(*) "
-                + "FROM T_TICKET T2 "
-                + "WHERE T2.STATUS = 0 "
-                + " " + dateCon + " ) AS NB_SA, "
-                + " "
-                + "(SELECT AVG(DATE_PART('epoch'::text, T2.CALL_TIME - T2.TICKET_TIME)::numeric) "
-                + "FROM T_TICKET T2 "
-                + "WHERE T2.call_time is not null "
-                + " " + dateCon + " ) AS AVGSEC_A, "
-                + " "
-                + "(SELECT AVG(DATE_PART('epoch'::text, T2.FINISH_TIME - T2.START_TIME)::numeric) "
-                + "FROM T_TICKET T2 "
-                + "WHERE T2.STATUS = 4 "
-                + " " + dateCon + " ) AS AVGSEC_T "
-                + "FROM T_TICKET T1 "
-                + "WHERE TO_DATE(TO_CHAR(T1.TICKET_TIME,'YYYY-MM-DD'),'YYYY-MM-DD') BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') limit 1 ) G1 ;";
-        PgConnection con = new PgConnection();
-        ResultSet r = con.getStatement().executeQuery(gblSQL2);
-        table.clear();
-        while (r.next()) {
-            ArrayList<String> row = new ArrayList<>();
-            String id = r.getString("biz_type_id");
-            row.add(r.getString("name"));
-            row.add(r.getLong("nb_t") + "");
-            row.add(r.getLong("nb_tt") + "");
-            row.add(r.getLong("nb_a") + "");
-            row.add(r.getLong("nb_tl1") + "");
-            row.add(r.getLong("nb_sa") + "");
-            row.add(r.getFloat("perApT") + "%");
-            row.add(r.getFloat("PERTL1pt") + "%");
-            row.add(r.getFloat("perSApT") + "%");
-            row.add(getFormatedTime(r.getFloat("avgSec_A")));
-
-            long cibleA = 0;
-            long cibleT = 0;
-            CibleController cc = new CibleController();
-            Cible cible = cc.getCibleById(id);
-            if (cible != null) {
-                cibleA = cible.getCibleA();
-                cibleT = cible.getCibleT();
-            }
-
-            String cibleSQL = "SELECT G1.BIZ_TYPE_ID, "
-                    + "G1.NAME, "
+            String subTotalSQL = "SELECT G1.NB_T, "
                     + "G1.NB_TT, "
-                    + "G1.NB_CA, "
+                    + "G1.NB_A, "
+                    + "G1.NB_TL1, "
+                    + "G1.NB_SA, "
                     + "CASE "
-                    + "WHEN G1.NB_TT::numeric = 0 "
-                    + "OR G1.NB_CA::numeric = 0 THEN 0 "
-                    + "ELSE CAST((G1.NB_CA::numeric / G1.NB_TT::numeric) * 100::numeric AS DECIMAL(10,2)) "
-                    + "END AS PERCAPT, "
-                    + "G1.NB_CT, "
+                    + "WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric "
+                    + "ELSE CAST((G1.NB_A::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2)) "
+                    + "END AS PERAPT, "
                     + "CASE "
-                    + "WHEN G1.NB_TT::numeric = 0 "
-                    + "OR G1.NB_CT::numeric = 0 THEN 0 "
-                    + "ELSE CAST((G1.NB_CT::numeric / G1.NB_TT::numeric) * 100::numeric AS DECIMAL(10,2)) "
-                    + "END AS PERCTPT "
+                    + "WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric "
+                    + "ELSE CAST((G1.NB_TL1::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2)) "
+                    + "END AS PERTL1PT, "
+                    + "CASE "
+                    + "WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric "
+                    + "ELSE CAST((G1.NB_SA::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2)) "
+                    + "END AS PERSAPT, "
+                    + "G1.AVGSEC_A, "
+                    + "G1.AVGSEC_T "
                     + "FROM "
-                    + "(SELECT B.NAME, "
-                    + "T1.BIZ_TYPE_ID, "
+                    + "(SELECT "
                     + "(SELECT COUNT(*) "
                     + "FROM T_TICKET T2 "
-                    + "WHERE T2.BIZ_TYPE_ID = T1.BIZ_TYPE_ID "
-                    + "AND T2.STATUS = 4  " + dateCon + " ) AS NB_TT, "
+                    + "WHERE 1 = 1 "
+                    + " " + dateCon + " ) AS NB_T, "
                     + " "
                     + "(SELECT COUNT(*) "
                     + "FROM T_TICKET T2 "
-                    + "WHERE T2.BIZ_TYPE_ID = T1.BIZ_TYPE_ID "
-                    + "AND DATE_PART('epoch'::text, T2.CALL_TIME - T2.TICKET_TIME)::numeric >  " + cibleA + " "
-                    + "AND T2.STATUS = 4  " + dateCon + " ) AS NB_CA, "
+                    + "WHERE T2.STATUS = 4 "
+                    + " " + dateCon + " ) AS NB_TT, "
                     + " "
                     + "(SELECT COUNT(*) "
                     + "FROM T_TICKET T2 "
-                    + "WHERE T2.BIZ_TYPE_ID = T1.BIZ_TYPE_ID "
-                    + "AND DATE_PART('epoch'::text, T2.FINISH_TIME - T2.START_TIME)::numeric >  " + cibleT + " "
-                    + "AND T2.STATUS = 4  " + dateCon + ") AS NB_CT "
-                    + "FROM T_TICKET T1, "
-                    + "T_BIZ_TYPE B "
-                    + "WHERE T1.BIZ_TYPE_ID = B.ID "
-                    + " AND TO_DATE(TO_CHAR(T1.TICKET_TIME,'YYYY-MM-DD'),'YYYY-MM-DD') BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') "
-                    + "AND T1.BIZ_TYPE_ID = '" + id + "' "
-                    + "GROUP BY T1.BIZ_TYPE_ID, "
-                    + "B.NAME) G1 ; "
-                    + "";
-            ResultSet cib = con.getStatement().executeQuery(cibleSQL);
-            if (cib.next()) {
-                row.add(cib.getLong("nb_ca") + "");
-                row.add(cib.getFloat("percapt") + "%");
-                row.add(getFormatedTime(r.getFloat("avgSec_T")));
-                row.add(cib.getLong("nb_ct") + "");
-                row.add(cib.getFloat("perctpt") + "%");
-            } else {
+                    + "WHERE T2.STATUS = 2 "
+                    + " " + dateCon + " ) AS NB_A, "
+                    + " "
+                    + "(SELECT COUNT(*) "
+                    + "FROM T_TICKET T2 "
+                    + "WHERE DATE_PART('epoch'::text, T2.FINISH_TIME - T2.START_TIME)::numeric / 60::numeric <= 1 "
+                    + "AND T2.STATUS = 4 "
+                    + " " + dateCon + " ) AS NB_TL1, "
+                    + " "
+                    + "(SELECT COUNT(*) "
+                    + "FROM T_TICKET T2 "
+                    + "WHERE T2.STATUS = 0 "
+                    + " " + dateCon + " ) AS NB_SA, "
+                    + " "
+                    + "(SELECT AVG(DATE_PART('epoch'::text, T2.CALL_TIME - T2.TICKET_TIME)::numeric) "
+                    + "FROM T_TICKET T2 "
+                    + "WHERE T2.call_time is not null "
+                    + " " + dateCon + " ) AS AVGSEC_A, "
+                    + " "
+                    + "(SELECT AVG(DATE_PART('epoch'::text, T2.FINISH_TIME - T2.START_TIME)::numeric) "
+                    + "FROM T_TICKET T2 "
+                    + "WHERE T2.STATUS = 4 "
+                    + " " + dateCon + " ) AS AVGSEC_T "
+                    + "FROM T_TICKET T1 "
+                    + "WHERE TO_DATE(TO_CHAR(T1.TICKET_TIME,'YYYY-MM-DD'),'YYYY-MM-DD') BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') limit 1 ) G1 ;";
+
+            ResultSet r = con.createStatement().executeQuery(gblSQL2);
+            table.clear();
+            while (r.next()) {
+                ArrayList<String> row = new ArrayList<>();
+                String id = r.getString("biz_type_id");
+                row.add(r.getString("name"));
+                row.add(r.getLong("nb_t") + "");
+                row.add(r.getLong("nb_tt") + "");
+                row.add(r.getLong("nb_a") + "");
+                row.add(r.getLong("nb_tl1") + "");
+                row.add(r.getLong("nb_sa") + "");
+                row.add(r.getFloat("perApT") + "%");
+                row.add(r.getFloat("PERTL1pt") + "%");
+                row.add(r.getFloat("perSApT") + "%");
+                row.add(getFormatedTime(r.getFloat("avgSec_A")));
+
+                long cibleA = 0;
+                long cibleT = 0;
+                CibleController cc = new CibleController();
+                Cible cible = cc.getCibleById(id);
+                if (cible != null) {
+                    cibleA = cible.getCibleA();
+                    cibleT = cible.getCibleT();
+                }
+
+                String cibleSQL = "SELECT G1.BIZ_TYPE_ID, "
+                        + "G1.NAME, "
+                        + "G1.NB_TT, "
+                        + "G1.NB_CA, "
+                        + "CASE "
+                        + "WHEN G1.NB_TT::numeric = 0 "
+                        + "OR G1.NB_CA::numeric = 0 THEN 0 "
+                        + "ELSE CAST((G1.NB_CA::numeric / G1.NB_TT::numeric) * 100::numeric AS DECIMAL(10,2)) "
+                        + "END AS PERCAPT, "
+                        + "G1.NB_CT, "
+                        + "CASE "
+                        + "WHEN G1.NB_TT::numeric = 0 "
+                        + "OR G1.NB_CT::numeric = 0 THEN 0 "
+                        + "ELSE CAST((G1.NB_CT::numeric / G1.NB_TT::numeric) * 100::numeric AS DECIMAL(10,2)) "
+                        + "END AS PERCTPT "
+                        + "FROM "
+                        + "(SELECT B.NAME, "
+                        + "T1.BIZ_TYPE_ID, "
+                        + "(SELECT COUNT(*) "
+                        + "FROM T_TICKET T2 "
+                        + "WHERE T2.BIZ_TYPE_ID = T1.BIZ_TYPE_ID "
+                        + "AND T2.STATUS = 4  " + dateCon + " ) AS NB_TT, "
+                        + " "
+                        + "(SELECT COUNT(*) "
+                        + "FROM T_TICKET T2 "
+                        + "WHERE T2.BIZ_TYPE_ID = T1.BIZ_TYPE_ID "
+                        + "AND DATE_PART('epoch'::text, T2.CALL_TIME - T2.TICKET_TIME)::numeric >  " + cibleA + " "
+                        + "AND T2.STATUS = 4  " + dateCon + " ) AS NB_CA, "
+                        + " "
+                        + "(SELECT COUNT(*) "
+                        + "FROM T_TICKET T2 "
+                        + "WHERE T2.BIZ_TYPE_ID = T1.BIZ_TYPE_ID "
+                        + "AND DATE_PART('epoch'::text, T2.FINISH_TIME - T2.START_TIME)::numeric >  " + cibleT + " "
+                        + "AND T2.STATUS = 4  " + dateCon + ") AS NB_CT "
+                        + "FROM T_TICKET T1, "
+                        + "T_BIZ_TYPE B "
+                        + "WHERE T1.BIZ_TYPE_ID = B.ID "
+                        + " AND TO_DATE(TO_CHAR(T1.TICKET_TIME,'YYYY-MM-DD'),'YYYY-MM-DD') BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') "
+                        + "AND T1.BIZ_TYPE_ID = '" + id + "' "
+                        + "GROUP BY T1.BIZ_TYPE_ID, "
+                        + "B.NAME) G1 ; ";
+                ResultSet cib = con.createStatement().executeQuery(cibleSQL);
+                if (cib.next()) {
+                    row.add(cib.getLong("nb_ca") + "");
+                    row.add(cib.getFloat("percapt") + "%");
+                    row.add(getFormatedTime(r.getFloat("avgSec_T")));
+                    row.add(cib.getLong("nb_ct") + "");
+                    row.add(cib.getFloat("perctpt") + "%");
+                } else {
+                    row.add("--");
+                    row.add("--%");
+                    row.add(getFormatedTime(r.getFloat("avgSec_T")));
+                    row.add("--");
+                    row.add("-%");
+                }
+
+                table.add(row);
+            }
+            r = con.createStatement().executeQuery(subTotalSQL);
+            while (r.next()) {
+                ArrayList<String> row = new ArrayList<>();
+                row.add("Sous-Totale");
+                row.add(r.getLong("nb_t") + "");
+                row.add(r.getLong("nb_tt") + "");
+                row.add(r.getLong("nb_a") + "");
+                row.add(r.getLong("nb_tl1") + "");
+                row.add(r.getLong("nb_sa") + "");
+                row.add(r.getFloat("perApT") + "%");
+                row.add(r.getFloat("PERTL1pt") + "%");
+                row.add(r.getFloat("perSApT") + "%");
+                row.add(getFormatedTime(r.getFloat("avgSec_A")));
                 row.add("--");
                 row.add("--%");
                 row.add(getFormatedTime(r.getFloat("avgSec_T")));
                 row.add("--");
                 row.add("-%");
+                table.add(row);
             }
 
-            table.add(row);
+            con.close();
+        } catch (Exception e) {
+            logger.error(e.getMessage());
         }
-        r = con.getStatement().executeQuery(subTotalSQL);
-        while (r.next()) {
-            ArrayList<String> row = new ArrayList<>();
-            row.add("Sous-Totale");
-            row.add(r.getLong("nb_t") + "");
-            row.add(r.getLong("nb_tt") + "");
-            row.add(r.getLong("nb_a") + "");
-            row.add(r.getLong("nb_tl1") + "");
-            row.add(r.getLong("nb_sa") + "");
-            row.add(r.getFloat("perApT") + "%");
-            row.add(r.getFloat("PERTL1pt") + "%");
-            row.add(r.getFloat("perSApT") + "%");
-            row.add(getFormatedTime(r.getFloat("avgSec_A")));
-            row.add("--");
-            row.add("--%");
-            row.add(getFormatedTime(r.getFloat("avgSec_T")));
-            row.add("--");
-            row.add("-%");
-            table.add(row);
-        }
-
-        con.closeConnection();
         return table;
     }
 
-    public List<ArrayList<String>> generateEmpTable(HttpServletRequest request, String d1, String d2, String db) throws SQLException, IOException, ClassNotFoundException, FileNotFoundException, ParserConfigurationException, SAXException, Exception {
+    public List<ArrayList<String>> generateEmpTable(HttpServletRequest request, String d1, String d2, String db) {
         this.date1 = (d1 == null) ? format.format(new Date()) : d1;
         this.date2 = (d2 == null) ? format.format(new Date()) : d2;
         this.DB = db;
         table.clear();
-        CfgHandler cfg = new CfgHandler(request);
-        String dateCon = " and to_date(to_char(t2.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') ";
-        String empSQL = "select  "
-                + "g1.deal_user, "
-                + "g1.name, "
-                + "g1.nb_t, "
-                + "g1.nb_tt, "
-                + "g1.nb_ta, "
-                + "g1.nb_ttl1, "
-                + "g1.nb_tsa, "
-                + "g1.avgsec_a, "
-                + "g1.avgsec_t, "
-                + "CASE  "
-                + "WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric  "
-                + " else  CAST((G1.NB_tA::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2))  "
-                + "END AS PERAPT,  "
-                + "   CASE  "
-                + "WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric  "
-                + " else  CAST((G1.NB_tTL1::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2))  "
-                + "END AS PERTL1PT,  "
-                + "CASE  "
-                + "WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric  "
-                + " else  CAST((G1.NB_tSA::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2))  "
-                + "END AS PERSAPT "
-                + " "
-                + "from "
-                + " "
-                + "(select  "
-                + "t1.deal_user, "
-                + "u.name,  "
-                + "(select count(*) from t_ticket t2 where t2.deal_user = t1.deal_user " + dateCon + ") as nb_t, "
-                + "(select count(*) from t_ticket t2 where t2.deal_user = t1.deal_user and t2.status=4 " + dateCon + ") as nb_tt, "
-                + "(select count(*) from t_ticket t2 where t2.deal_user = t1.deal_user and t2.status=2 " + dateCon + ") as nb_ta, "
-                + "(select count(*) from t_ticket t2 where t2.deal_user = t1.deal_user and DATE_PART('epoch'::text, T2.FINISH_TIME - T2.START_TIME)::numeric / 60::numeric <= 1 and t2.status=4 " + dateCon + ") as nb_ttl1, "
-                + "(select count(*) from t_ticket t2 where t2.deal_user = t1.deal_user and t2.status=0 " + dateCon + ") as nb_tsa, "
-                + "(SELECT AVG(DATE_PART('epoch'::text, T2.CALL_TIME - T2.TICKET_TIME)::numeric) FROM T_TICKET T2 WHERE t2.deal_user = t1.deal_user and T2.call_time is not null  " + dateCon + ") AS AVGSEC_A, "
-                + "(SELECT AVG(DATE_PART('epoch'::text, T2.FINISH_TIME - T2.START_TIME)::numeric) FROM T_TICKET T2 WHERE t2.deal_user = t1.deal_user and T2.STATUS = 4  " + dateCon + ") AS AVGSEC_T  "
-                + "from t_ticket t1, t_user u "
-                + "where t1.deal_user= u.id and to_date(to_char(t1.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD')"
-                + "group by u.name,t1.deal_user) g1;";
-        PgConnection con = new PgConnection();
-        ResultSet r = con.getStatement().executeQuery(empSQL);
-        table.clear();
-        while (r.next()) {
-            ArrayList<String> row = new ArrayList<>();
-            String id = r.getString("deal_user");
-            row.add(r.getString("name"));
-            row.add(r.getLong("nb_t") + "");
-            row.add(r.getLong("nb_tt") + "");
-            row.add(r.getLong("nb_ta") + "");
-            row.add(r.getLong("nb_ttl1") + "");
-            row.add(r.getLong("nb_tsa") + "");
-            row.add(r.getFloat("perApT") + "%");
-            row.add(r.getFloat("PERTL1pt") + "%");
-            row.add(r.getFloat("perSApT") + "%");
-            row.add(getFormatedTime(r.getFloat("avgSec_A")));
-            row.add("--");
-            row.add("--%");
-            row.add(getFormatedTime(r.getFloat("avgSec_T")));
-            row.add("--");
-            row.add("-%");
+        try (Connection con = new CPConnection().getConnection()) {
+            String dateCon = " and to_date(to_char(t2.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') ";
+            String empSQL = "select  "
+                    + "g1.deal_user, "
+                    + "g1.name, "
+                    + "g1.nb_t, "
+                    + "g1.nb_tt, "
+                    + "g1.nb_ta, "
+                    + "g1.nb_ttl1, "
+                    + "g1.nb_tsa, "
+                    + "g1.avgsec_a, "
+                    + "g1.avgsec_t, "
+                    + "CASE  "
+                    + "WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric  "
+                    + " else  CAST((G1.NB_tA::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2))  "
+                    + "END AS PERAPT,  "
+                    + "   CASE  "
+                    + "WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric  "
+                    + " else  CAST((G1.NB_tTL1::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2))  "
+                    + "END AS PERTL1PT,  "
+                    + "CASE  "
+                    + "WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric  "
+                    + " else  CAST((G1.NB_tSA::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2))  "
+                    + "END AS PERSAPT "
+                    + " "
+                    + "from "
+                    + " "
+                    + "(select  "
+                    + "t1.deal_user, "
+                    + "u.name,  "
+                    + "(select count(*) from t_ticket t2 where t2.deal_user = t1.deal_user " + dateCon + ") as nb_t, "
+                    + "(select count(*) from t_ticket t2 where t2.deal_user = t1.deal_user and t2.status=4 " + dateCon + ") as nb_tt, "
+                    + "(select count(*) from t_ticket t2 where t2.deal_user = t1.deal_user and t2.status=2 " + dateCon + ") as nb_ta, "
+                    + "(select count(*) from t_ticket t2 where t2.deal_user = t1.deal_user and DATE_PART('epoch'::text, T2.FINISH_TIME - T2.START_TIME)::numeric / 60::numeric <= 1 and t2.status=4 " + dateCon + ") as nb_ttl1, "
+                    + "(select count(*) from t_ticket t2 where t2.deal_user = t1.deal_user and t2.status=0 " + dateCon + ") as nb_tsa, "
+                    + "(SELECT AVG(DATE_PART('epoch'::text, T2.CALL_TIME - T2.TICKET_TIME)::numeric) FROM T_TICKET T2 WHERE t2.deal_user = t1.deal_user and T2.call_time is not null  " + dateCon + ") AS AVGSEC_A, "
+                    + "(SELECT AVG(DATE_PART('epoch'::text, T2.FINISH_TIME - T2.START_TIME)::numeric) FROM T_TICKET T2 WHERE t2.deal_user = t1.deal_user and T2.STATUS = 4  " + dateCon + ") AS AVGSEC_T  "
+                    + "from t_ticket t1, t_user u "
+                    + "where t1.deal_user= u.id and to_date(to_char(t1.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD')"
+                    + "group by u.name,t1.deal_user) g1;";
+            ResultSet r = con.createStatement().executeQuery(empSQL);
+            table.clear();
+            while (r.next()) {
+                ArrayList<String> row = new ArrayList<>();
+                String id = r.getString("deal_user");
+                row.add(r.getString("name"));
+                row.add(r.getLong("nb_t") + "");
+                row.add(r.getLong("nb_tt") + "");
+                row.add(r.getLong("nb_ta") + "");
+                row.add(r.getLong("nb_ttl1") + "");
+                row.add(r.getLong("nb_tsa") + "");
+                row.add(r.getFloat("perApT") + "%");
+                row.add(r.getFloat("PERTL1pt") + "%");
+                row.add(r.getFloat("perSApT") + "%");
+                row.add(getFormatedTime(r.getFloat("avgSec_A")));
+                row.add("--");
+                row.add("--%");
+                row.add(getFormatedTime(r.getFloat("avgSec_T")));
+                row.add("--");
+                row.add("-%");
 
-            table.add(row);
+                table.add(row);
+            }
+            String subTotalSQL = "SELECT G1.NB_T, "
+                    + "G1.NB_TT, "
+                    + "G1.NB_A, "
+                    + "G1.NB_TL1, "
+                    + "G1.NB_SA, "
+                    + "CASE "
+                    + "WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric "
+                    + " else  CAST((G1.NB_A::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2)) "
+                    + "END AS PERAPT, "
+                    + "CASE "
+                    + "WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric "
+                    + " else  CAST((G1.NB_TL1::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2)) "
+                    + "END AS PERTL1PT, "
+                    + "CASE "
+                    + "WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric "
+                    + " else  CAST((G1.NB_SA::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2)) "
+                    + "END AS PERSAPT, "
+                    + "G1.AVGSEC_A, "
+                    + "G1.AVGSEC_T "
+                    + "FROM "
+                    + "(SELECT "
+                    + "(SELECT COUNT(*) "
+                    + "FROM T_TICKET T2 "
+                    + "WHERE 1 = 1 "
+                    + " " + dateCon + " and t2.deal_user is not null) AS NB_T, "
+                    + " "
+                    + "(SELECT COUNT(*) "
+                    + "FROM T_TICKET T2 "
+                    + "WHERE T2.STATUS = 4 "
+                    + " " + dateCon + "  and t2.deal_user is not null) AS NB_TT, "
+                    + " "
+                    + "(SELECT COUNT(*) "
+                    + "FROM T_TICKET T2 "
+                    + "WHERE T2.STATUS = 2 "
+                    + " " + dateCon + "  and t2.deal_user is not null) AS NB_A, "
+                    + " "
+                    + "(SELECT COUNT(*) "
+                    + "FROM T_TICKET T2 "
+                    + "WHERE DATE_PART('epoch'::text, T2.FINISH_TIME - T2.START_TIME)::numeric / 60::numeric <= 1 "
+                    + "AND T2.STATUS = 4 "
+                    + " " + dateCon + "  and t2.deal_user is not null) AS NB_TL1, "
+                    + " "
+                    + "(SELECT COUNT(*) "
+                    + "FROM T_TICKET T2 "
+                    + "WHERE T2.STATUS = 0 "
+                    + " " + dateCon + "  and t2.deal_user is not null) AS NB_SA, "
+                    + " "
+                    + "(SELECT AVG(DATE_PART('epoch'::text, T2.CALL_TIME - T2.TICKET_TIME)::numeric) "
+                    + "FROM T_TICKET T2 "
+                    + "WHERE T2.call_time is not null "
+                    + " " + dateCon + "  and t2.deal_user is not null) AS AVGSEC_A, "
+                    + " "
+                    + "(SELECT AVG(DATE_PART('epoch'::text, T2.FINISH_TIME - T2.START_TIME)::numeric) "
+                    + "FROM T_TICKET T2 "
+                    + "WHERE T2.STATUS = 4 "
+                    + " " + dateCon + "  and t2.deal_user is not null) AS AVGSEC_T "
+                    + "FROM T_TICKET T1 "
+                    + "WHERE t1.deal_user is not null and TO_DATE(TO_CHAR(T1.TICKET_TIME,'YYYY-MM-DD'),'YYYY-MM-DD') BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') limit 1 ) G1 ;";
+            r = con.createStatement().executeQuery(subTotalSQL);
+            while (r.next()) {
+                ArrayList<String> row = new ArrayList<>();
+                row.add("Sous-Totale");
+                row.add(r.getLong("nb_t") + "");
+                row.add(r.getLong("nb_tt") + "");
+                row.add(r.getLong("nb_a") + "");
+                row.add(r.getLong("nb_tl1") + "");
+                row.add(r.getLong("nb_sa") + "");
+                row.add(r.getFloat("perApT") + "%");
+                row.add(r.getFloat("PERTL1pt") + "%");
+                row.add(r.getFloat("perSApT") + "%");
+                row.add(getFormatedTime(r.getFloat("avgSec_A")));
+                row.add("--");
+                row.add("--%");
+                row.add(getFormatedTime(r.getFloat("avgSec_T")));
+                row.add("--");
+                row.add("-%");
+                table.add(row);
+            }
+            con.close();
+        } catch (Exception e) {
+            logger.error(e.getMessage());
         }
-        String subTotalSQL = "SELECT G1.NB_T, "
-                + "G1.NB_TT, "
-                + "G1.NB_A, "
-                + "G1.NB_TL1, "
-                + "G1.NB_SA, "
-                + "CASE "
-                + "WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric "
-                + " else  CAST((G1.NB_A::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2)) "
-                + "END AS PERAPT, "
-                + "CASE "
-                + "WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric "
-                + " else  CAST((G1.NB_TL1::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2)) "
-                + "END AS PERTL1PT, "
-                + "CASE "
-                + "WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric "
-                + " else  CAST((G1.NB_SA::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2)) "
-                + "END AS PERSAPT, "
-                + "G1.AVGSEC_A, "
-                + "G1.AVGSEC_T "
-                + "FROM "
-                + "(SELECT "
-                + "(SELECT COUNT(*) "
-                + "FROM T_TICKET T2 "
-                + "WHERE 1 = 1 "
-                + " " + dateCon + " and t2.deal_user is not null) AS NB_T, "
-                + " "
-                + "(SELECT COUNT(*) "
-                + "FROM T_TICKET T2 "
-                + "WHERE T2.STATUS = 4 "
-                + " " + dateCon + "  and t2.deal_user is not null) AS NB_TT, "
-                + " "
-                + "(SELECT COUNT(*) "
-                + "FROM T_TICKET T2 "
-                + "WHERE T2.STATUS = 2 "
-                + " " + dateCon + "  and t2.deal_user is not null) AS NB_A, "
-                + " "
-                + "(SELECT COUNT(*) "
-                + "FROM T_TICKET T2 "
-                + "WHERE DATE_PART('epoch'::text, T2.FINISH_TIME - T2.START_TIME)::numeric / 60::numeric <= 1 "
-                + "AND T2.STATUS = 4 "
-                + " " + dateCon + "  and t2.deal_user is not null) AS NB_TL1, "
-                + " "
-                + "(SELECT COUNT(*) "
-                + "FROM T_TICKET T2 "
-                + "WHERE T2.STATUS = 0 "
-                + " " + dateCon + "  and t2.deal_user is not null) AS NB_SA, "
-                + " "
-                + "(SELECT AVG(DATE_PART('epoch'::text, T2.CALL_TIME - T2.TICKET_TIME)::numeric) "
-                + "FROM T_TICKET T2 "
-                + "WHERE T2.call_time is not null "
-                + " " + dateCon + "  and t2.deal_user is not null) AS AVGSEC_A, "
-                + " "
-                + "(SELECT AVG(DATE_PART('epoch'::text, T2.FINISH_TIME - T2.START_TIME)::numeric) "
-                + "FROM T_TICKET T2 "
-                + "WHERE T2.STATUS = 4 "
-                + " " + dateCon + "  and t2.deal_user is not null) AS AVGSEC_T "
-                + "FROM T_TICKET T1 "
-                + "WHERE t1.deal_user is not null and TO_DATE(TO_CHAR(T1.TICKET_TIME,'YYYY-MM-DD'),'YYYY-MM-DD') BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') limit 1 ) G1 ;";
-        r = con.getStatement().executeQuery(subTotalSQL);
-        while (r.next()) {
-            ArrayList<String> row = new ArrayList<>();
-            row.add("Sous-Totale");
-            row.add(r.getLong("nb_t") + "");
-            row.add(r.getLong("nb_tt") + "");
-            row.add(r.getLong("nb_a") + "");
-            row.add(r.getLong("nb_tl1") + "");
-            row.add(r.getLong("nb_sa") + "");
-            row.add(r.getFloat("perApT") + "%");
-            row.add(r.getFloat("PERTL1pt") + "%");
-            row.add(r.getFloat("perSApT") + "%");
-            row.add(getFormatedTime(r.getFloat("avgSec_A")));
-            row.add("--");
-            row.add("--%");
-            row.add(getFormatedTime(r.getFloat("avgSec_T")));
-            row.add("--");
-            row.add("-%");
-            table.add(row);
-        }
-
-        con.closeConnection();
         return table;
     }
 
-    public List<ArrayList<String>> generateEmpServiceTable(HttpServletRequest request, String d1, String d2, String db) throws SQLException, IOException, ClassNotFoundException, FileNotFoundException, ParserConfigurationException, SAXException, Exception {
+    public List<ArrayList<String>> generateEmpServiceTable(HttpServletRequest request, String d1, String d2, String db) {
         this.date1 = (d1 == null) ? format.format(new Date()) : d1;
         this.date2 = (d2 == null) ? format.format(new Date()) : d2;
         this.DB = db;
         table.clear();
-        CfgHandler cfg = new CfgHandler(request);
-        String dateCon = " and to_date(to_char(t2.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') ";
 
-        String empSQL = "select g1.deal_user, g1.username, g1.service, g1.biz_type_id, g1.nb_t, g1.nb_tt, g1.nb_ta, g1.nb_ttl1, g1.nb_tsa, g1.avgsec_a, g1.avgsec_t,  CASE WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric  ELSE CAST((G1.NB_tA::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2)) END AS PERAPT, CASE WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric                   ELSE CAST((G1.NB_tTL1::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2)) END AS PERTL1PT, CASE WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric ELSE CAST((G1.NB_tSA::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2))  END AS PERSAPT from "
-                + " (select t1.deal_user,  u.name as username, t1.biz_type_id, b.name as service ,"
-                + "(select count(*) from t_ticket t2 where t2.deal_user=t1.deal_user and t2.biz_type_id=t1.biz_type_id " + dateCon + ") as nb_t, "
-                + "(select count(*) from t_ticket t2 where t2.deal_user=t1.deal_user and t2.biz_type_id=t1.biz_type_id and t2.status=4    " + dateCon + "  ) as nb_tt, "
-                + "(select count(*) from t_ticket t2 where t2.deal_user=t1.deal_user and t2.biz_type_id=t1.biz_type_id and t2.status=2   " + dateCon + "   ) as nb_ta, "
-                + "(select count(*) from t_ticket t2 where t2.deal_user=t1.deal_user and t2.biz_type_id=t1.biz_type_id and DATE_PART('epoch'::text, T2.FINISH_TIME - T2.START_TIME)::numeric / 60::numeric <= 1 and t2.status=4   " + dateCon + "  ) as nb_ttl1,"
-                + "(select count(*) from t_ticket t2 where t2.deal_user=t1.deal_user and t2.biz_type_id=t1.biz_type_id and t2.status=0   " + dateCon + "   ) as nb_tsa,"
-                + "(SELECT AVG(DATE_PART('epoch'::text, T2.CALL_TIME - T2.TICKET_TIME)::numeric) FROM T_TICKET T2 WHERE t2.deal_user=t1.deal_user and t2.biz_type_id=t1.biz_type_id and T2.call_time is not null    " + dateCon + "   ) AS AVGSEC_A,"
-                + "(SELECT AVG(DATE_PART('epoch'::text, T2.FINISH_TIME - T2.START_TIME)::numeric) FROM T_TICKET T2 WHERE t2.deal_user=t1.deal_user and t2.biz_type_id=t1.biz_type_id and T2.STATUS = 4   " + dateCon + " ) AS AVGSEC_T "
-                + "  from t_ticket t1 , t_biz_type b,t_user u "
-                + "where t1.deal_user is not null and t1.biz_type_id=b.id and t1.deal_user=u.id and to_date(to_char(t1.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') "
-                + "group by t1.deal_user,u.name,t1.biz_type_id,b.name order by username , service) g1;";
+        try (Connection con = new CPConnection().getConnection()) {
+            String dateCon = " and to_date(to_char(t2.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') ";
 
-        String subTotalSQL = "SELECT G1.NB_T, "
-                + "G1.NB_TT, "
-                + "G1.NB_A, "
-                + "G1.NB_TL1, "
-                + "G1.NB_SA, "
-                + "CASE "
-                + "WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric "
-                + "ELSE CAST((G1.NB_A::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2)) "
-                + "END AS PERAPT, "
-                + "CASE "
-                + "WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric "
-                + "ELSE CAST((G1.NB_TL1::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2)) "
-                + "END AS PERTL1PT, "
-                + "CASE "
-                + "WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric "
-                + "ELSE CAST((G1.NB_SA::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2)) "
-                + "END AS PERSAPT, "
-                + "G1.AVGSEC_A, "
-                + "G1.AVGSEC_T "
-                + "FROM "
-                + "(SELECT "
-                + "(SELECT COUNT(*) "
-                + "FROM T_TICKET T2 "
-                + "WHERE 1 = 1 "
-                + " " + dateCon + " and t2.deal_user is not null) AS NB_T, "
-                + " "
-                + "(SELECT COUNT(*) "
-                + "FROM T_TICKET T2 "
-                + "WHERE T2.STATUS = 4 "
-                + " " + dateCon + "  and t2.deal_user is not null) AS NB_TT, "
-                + " "
-                + "(SELECT COUNT(*) "
-                + "FROM T_TICKET T2 "
-                + "WHERE T2.STATUS = 2 "
-                + " " + dateCon + "  and t2.deal_user is not null) AS NB_A, "
-                + " "
-                + "(SELECT COUNT(*) "
-                + "FROM T_TICKET T2 "
-                + "WHERE DATE_PART('epoch'::text, T2.FINISH_TIME - T2.START_TIME)::numeric / 60::numeric <= 1 "
-                + "AND T2.STATUS = 4 "
-                + " " + dateCon + "  and t2.deal_user is not null) AS NB_TL1, "
-                + " "
-                + "(SELECT COUNT(*) "
-                + "FROM T_TICKET T2 "
-                + "WHERE T2.STATUS = 0 "
-                + " " + dateCon + "  and t2.deal_user is not null) AS NB_SA, "
-                + " "
-                + "(SELECT AVG(DATE_PART('epoch'::text, T2.CALL_TIME - T2.TICKET_TIME)::numeric) "
-                + "FROM T_TICKET T2 "
-                + "WHERE T2.call_time is not null "
-                + " " + dateCon + "  and t2.deal_user is not null) AS AVGSEC_A, "
-                + " "
-                + "(SELECT AVG(DATE_PART('epoch'::text, T2.FINISH_TIME - T2.START_TIME)::numeric) "
-                + "FROM T_TICKET T2 "
-                + "WHERE T2.STATUS = 4 "
-                + " " + dateCon + "  and t2.deal_user is not null) AS AVGSEC_T "
-                + "FROM T_TICKET T1 "
-                + "WHERE t1.deal_user is not null and TO_DATE(TO_CHAR(T1.TICKET_TIME,'YYYY-MM-DD'),'YYYY-MM-DD') BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') limit 1 ) G1 ;";
-        PgConnection con = new PgConnection();
-        ResultSet r = con.getStatement().executeQuery(empSQL);
-        while (r.next()) {
-            ArrayList<String> row = new ArrayList<>();
-            String id = r.getString("biz_type_id");
-            row.add(r.getString("username"));
-            row.add(r.getString("service"));
-            row.add(r.getLong("nb_t") + "");
-            row.add(r.getLong("nb_tt") + "");
-            row.add(r.getLong("nb_ta") + "");
-            row.add(r.getLong("nb_ttl1") + "");
-            row.add(r.getLong("nb_tsa") + "");
-            row.add(r.getFloat("perApT") + "%");
-            row.add(r.getFloat("PERTL1pt") + "%");
-            row.add(r.getFloat("perSApT") + "%");
-            row.add(getFormatedTime(r.getFloat("avgSec_A")));
-            row.add("--");
-            row.add("--%");
-            row.add(getFormatedTime(r.getFloat("avgSec_T")));
-            row.add("--");
-            row.add("-%");
+            String empSQL = "select g1.deal_user, g1.username, g1.service, g1.biz_type_id, g1.nb_t, g1.nb_tt, g1.nb_ta, g1.nb_ttl1, g1.nb_tsa, g1.avgsec_a, g1.avgsec_t,  CASE WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric  ELSE CAST((G1.NB_tA::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2)) END AS PERAPT, CASE WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric                   ELSE CAST((G1.NB_tTL1::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2)) END AS PERTL1PT, CASE WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric ELSE CAST((G1.NB_tSA::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2))  END AS PERSAPT from "
+                    + " (select t1.deal_user,  u.name as username, t1.biz_type_id, b.name as service ,"
+                    + "(select count(*) from t_ticket t2 where t2.deal_user=t1.deal_user and t2.biz_type_id=t1.biz_type_id " + dateCon + ") as nb_t, "
+                    + "(select count(*) from t_ticket t2 where t2.deal_user=t1.deal_user and t2.biz_type_id=t1.biz_type_id and t2.status=4    " + dateCon + "  ) as nb_tt, "
+                    + "(select count(*) from t_ticket t2 where t2.deal_user=t1.deal_user and t2.biz_type_id=t1.biz_type_id and t2.status=2   " + dateCon + "   ) as nb_ta, "
+                    + "(select count(*) from t_ticket t2 where t2.deal_user=t1.deal_user and t2.biz_type_id=t1.biz_type_id and DATE_PART('epoch'::text, T2.FINISH_TIME - T2.START_TIME)::numeric / 60::numeric <= 1 and t2.status=4   " + dateCon + "  ) as nb_ttl1,"
+                    + "(select count(*) from t_ticket t2 where t2.deal_user=t1.deal_user and t2.biz_type_id=t1.biz_type_id and t2.status=0   " + dateCon + "   ) as nb_tsa,"
+                    + "(SELECT AVG(DATE_PART('epoch'::text, T2.CALL_TIME - T2.TICKET_TIME)::numeric) FROM T_TICKET T2 WHERE t2.deal_user=t1.deal_user and t2.biz_type_id=t1.biz_type_id and T2.call_time is not null    " + dateCon + "   ) AS AVGSEC_A,"
+                    + "(SELECT AVG(DATE_PART('epoch'::text, T2.FINISH_TIME - T2.START_TIME)::numeric) FROM T_TICKET T2 WHERE t2.deal_user=t1.deal_user and t2.biz_type_id=t1.biz_type_id and T2.STATUS = 4   " + dateCon + " ) AS AVGSEC_T "
+                    + "  from t_ticket t1 , t_biz_type b,t_user u "
+                    + "where t1.deal_user is not null and t1.biz_type_id=b.id and t1.deal_user=u.id and to_date(to_char(t1.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') "
+                    + "group by t1.deal_user,u.name,t1.biz_type_id,b.name order by username , service) g1;";
 
-            table.add(row);
-        }
+            String subTotalSQL = "SELECT G1.NB_T, "
+                    + "G1.NB_TT, "
+                    + "G1.NB_A, "
+                    + "G1.NB_TL1, "
+                    + "G1.NB_SA, "
+                    + "CASE "
+                    + "WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric "
+                    + "ELSE CAST((G1.NB_A::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2)) "
+                    + "END AS PERAPT, "
+                    + "CASE "
+                    + "WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric "
+                    + "ELSE CAST((G1.NB_TL1::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2)) "
+                    + "END AS PERTL1PT, "
+                    + "CASE "
+                    + "WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric "
+                    + "ELSE CAST((G1.NB_SA::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2)) "
+                    + "END AS PERSAPT, "
+                    + "G1.AVGSEC_A, "
+                    + "G1.AVGSEC_T "
+                    + "FROM "
+                    + "(SELECT "
+                    + "(SELECT COUNT(*) "
+                    + "FROM T_TICKET T2 "
+                    + "WHERE 1 = 1 "
+                    + " " + dateCon + " and t2.deal_user is not null) AS NB_T, "
+                    + " "
+                    + "(SELECT COUNT(*) "
+                    + "FROM T_TICKET T2 "
+                    + "WHERE T2.STATUS = 4 "
+                    + " " + dateCon + "  and t2.deal_user is not null) AS NB_TT, "
+                    + " "
+                    + "(SELECT COUNT(*) "
+                    + "FROM T_TICKET T2 "
+                    + "WHERE T2.STATUS = 2 "
+                    + " " + dateCon + "  and t2.deal_user is not null) AS NB_A, "
+                    + " "
+                    + "(SELECT COUNT(*) "
+                    + "FROM T_TICKET T2 "
+                    + "WHERE DATE_PART('epoch'::text, T2.FINISH_TIME - T2.START_TIME)::numeric / 60::numeric <= 1 "
+                    + "AND T2.STATUS = 4 "
+                    + " " + dateCon + "  and t2.deal_user is not null) AS NB_TL1, "
+                    + " "
+                    + "(SELECT COUNT(*) "
+                    + "FROM T_TICKET T2 "
+                    + "WHERE T2.STATUS = 0 "
+                    + " " + dateCon + "  and t2.deal_user is not null) AS NB_SA, "
+                    + " "
+                    + "(SELECT AVG(DATE_PART('epoch'::text, T2.CALL_TIME - T2.TICKET_TIME)::numeric) "
+                    + "FROM T_TICKET T2 "
+                    + "WHERE T2.call_time is not null "
+                    + " " + dateCon + "  and t2.deal_user is not null) AS AVGSEC_A, "
+                    + " "
+                    + "(SELECT AVG(DATE_PART('epoch'::text, T2.FINISH_TIME - T2.START_TIME)::numeric) "
+                    + "FROM T_TICKET T2 "
+                    + "WHERE T2.STATUS = 4 "
+                    + " " + dateCon + "  and t2.deal_user is not null) AS AVGSEC_T "
+                    + "FROM T_TICKET T1 "
+                    + "WHERE t1.deal_user is not null and TO_DATE(TO_CHAR(T1.TICKET_TIME,'YYYY-MM-DD'),'YYYY-MM-DD') BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') limit 1 ) G1 ;";
+
+            ResultSet r = con.createStatement().executeQuery(empSQL);
+            while (r.next()) {
+                ArrayList<String> row = new ArrayList<>();
+                String id = r.getString("biz_type_id");
+                row.add(r.getString("username"));
+                row.add(r.getString("service"));
+                row.add(r.getLong("nb_t") + "");
+                row.add(r.getLong("nb_tt") + "");
+                row.add(r.getLong("nb_ta") + "");
+                row.add(r.getLong("nb_ttl1") + "");
+                row.add(r.getLong("nb_tsa") + "");
+                row.add(r.getFloat("perApT") + "%");
+                row.add(r.getFloat("PERTL1pt") + "%");
+                row.add(r.getFloat("perSApT") + "%");
+                row.add(getFormatedTime(r.getFloat("avgSec_A")));
+                row.add("--");
+                row.add("--%");
+                row.add(getFormatedTime(r.getFloat("avgSec_T")));
+                row.add("--");
+                row.add("-%");
+
+                table.add(row);
+            }
         /*String cibleSQL = "SELECT G1.BIZ_TYPE_ID, "
                     + "G1.NAME, "
                     + "G1.NB_TT, "
@@ -581,1454 +590,1516 @@ public class TableGenerator {
                     + "GROUP BY T1.BIZ_TYPE_ID, "
                     + "B.NAME) G1 ; "
                     + "";*/
-        r = con.getStatement().executeQuery(subTotalSQL);
-        while (r.next()) {
-            ArrayList<String> row = new ArrayList<>();
-            row.add("Sous-Totale");
-            row.add("Sous-Totale");
-            row.add(r.getLong("nb_t") + "");
-            row.add(r.getLong("nb_tt") + "");
-            row.add(r.getLong("nb_a") + "");
-            row.add(r.getLong("nb_tl1") + "");
-            row.add(r.getLong("nb_sa") + "");
-            row.add(r.getFloat("perApT") + "%");
-            row.add(r.getFloat("PERTL1pt") + "%");
-            row.add(r.getFloat("perSApT") + "%");
-            row.add(getFormatedTime(r.getFloat("avgSec_A")));
-            row.add("--");
-            row.add("--%");
-            row.add(getFormatedTime(r.getFloat("avgSec_T")));
-            row.add("--");
-            row.add("-%");
-            table.add(row);
-        }
+            r = con.createStatement().executeQuery(subTotalSQL);
+            while (r.next()) {
+                ArrayList<String> row = new ArrayList<>();
+                row.add("Sous-Totale");
+                row.add("Sous-Totale");
+                row.add(r.getLong("nb_t") + "");
+                row.add(r.getLong("nb_tt") + "");
+                row.add(r.getLong("nb_a") + "");
+                row.add(r.getLong("nb_tl1") + "");
+                row.add(r.getLong("nb_sa") + "");
+                row.add(r.getFloat("perApT") + "%");
+                row.add(r.getFloat("PERTL1pt") + "%");
+                row.add(r.getFloat("perSApT") + "%");
+                row.add(getFormatedTime(r.getFloat("avgSec_A")));
+                row.add("--");
+                row.add("--%");
+                row.add(getFormatedTime(r.getFloat("avgSec_T")));
+                row.add("--");
+                row.add("-%");
+                table.add(row);
+            }
 
-        con.closeConnection();
+            con.close();
+        } catch (Exception e) {
+            logger.error(e.getMessage());
+        }
         return table;
     }
 
-    public List<ArrayList<String>> generateGchTable(HttpServletRequest request, String d1, String d2, String db) throws SQLException, IOException, ClassNotFoundException, FileNotFoundException, ParserConfigurationException, SAXException, Exception {
+    public List<ArrayList<String>> generateGchTable(HttpServletRequest request, String d1, String d2, String db) {
         this.date1 = (d1 == null) ? format.format(new Date()) : d1;
         this.date2 = (d2 == null) ? format.format(new Date()) : d2;
         this.DB = db;
         table.clear();
-        CfgHandler cfg = new CfgHandler(request);
-        String dateCon = " and to_date(to_char(t2.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') ";
 
-        String SQL = "select "
-                + "g1.deal_win, "
-                + "g1.guichet, "
-                + "g1.nb_t, "
-                + "g1.nb_tt, "
-                + "g1.nb_ta, "
-                + "g1.nb_ttl1, "
-                + "g1.nb_tsa, "
-                + "g1.avgsec_a, "
-                + "g1.avgsec_t, "
-                + "CASE "
-                + "WHEN G1.NB_T::numeric=0::numeric then 0::numeric "
-                + " else  CAST((G1.NB_tA::numeric/G1.NB_T::numeric)*100::numeric AS DECIMAL(10,2)) "
-                + "END AS PERAPT, "
-                + "CASE "
-                + "WHEN G1.NB_T::numeric=0::numeric then 0::numeric "
-                + " else  CAST((G1.NB_tTL1::numeric/G1.NB_T::numeric)*100::numeric AS DECIMAL(10,2)) "
-                + "END AS PERTL1PT, "
-                + "CASE "
-                + "WHEN G1.NB_T::numeric=0::numeric then 0::numeric "
-                + " else  CAST((G1.NB_tSA::numeric/G1.NB_T::numeric)*100::numeric AS DECIMAL(10,2)) "
-                + "END AS PERSAPT "
-                + "from "
-                + "(SELECT "
-                + "t1.deal_win, "
-                + "w.name as guichet, "
-                + "( select count(*)from t_ticket t2 where t2.deal_win=t1.deal_win " + dateCon + ") as nb_t, "
-                + "( select count(*)from t_ticket t2 where t2.deal_win=t1.deal_win and t2.status=4 " + dateCon + ") as  nb_tt, "
-                + "( select count(*)from t_ticket t2 where t2.deal_win=t1.deal_win and t2.status=2 " + dateCon + ") as  nb_ta, "
-                + "( select count(*)from t_ticket t2 where t2.deal_win=t1.deal_win and DATE_PART('epoch'::text,T2.FINISH_TIME-T2.START_TIME)::numeric/60::numeric<=1 and t2.status=4 " + dateCon + ") as nb_ttl1, "
-                + "( select count(*)from t_ticket t2 where t2.deal_win=t1.deal_win and t2.status=0 " + dateCon + ") as  nb_tsa, "
-                + "(SELECT AVG(DATE_PART('epoch'::text,T2.CALL_TIME-T2.TICKET_TIME)::numeric) from T_TICKET T2 WHERE t2.deal_win=t1.deal_win and T2.call_time is not null " + dateCon + ") AS AVGSEC_A, "
-                + "(SELECT AVG(DATE_PART('epoch'::text,T2.FINISH_TIME-T2.START_TIME)::numeric) from T_TICKET T2 WHERE t2.deal_win=t1.deal_win and T2.STATUS=4 " + dateCon + ") AS AVGSEC_T "
-                + "from "
-                + "t_ticket t1, "
-                + "t_window w "
-                + "where t1.deal_win=w.id and to_date(to_char(t1.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD')"
-                + "group by t1.deal_win,w.name)g1 "
-                + ";";
-        PgConnection con = new PgConnection();
-        ResultSet r = con.getStatement().executeQuery(SQL);
-        while (r.next()) {
-            ArrayList<String> row = new ArrayList<>();
-            String id = r.getString("deal_win");
-            row.add(r.getString("guichet"));
-            row.add(r.getLong("nb_t") + "");
-            row.add(r.getLong("nb_tt") + "");
-            row.add(r.getLong("nb_ta") + "");
-            row.add(r.getLong("nb_ttl1") + "");
-            row.add(r.getLong("nb_tsa") + "");
-            row.add(r.getFloat("perApT") + "%");
-            row.add(r.getFloat("PERTL1pt") + "%");
-            row.add(r.getFloat("perSApT") + "%");
-            row.add(getFormatedTime(r.getFloat("avgSec_A")));
-            row.add("--");
-            row.add("--%");
-            row.add(getFormatedTime(r.getFloat("avgSec_T")));
-            row.add("--");
-            row.add("-%");
+        try (Connection con = new CPConnection().getConnection()) {
+            String dateCon = " and to_date(to_char(t2.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') ";
 
-            table.add(row);
+            String SQL = "select "
+                    + "g1.deal_win, "
+                    + "g1.guichet, "
+                    + "g1.nb_t, "
+                    + "g1.nb_tt, "
+                    + "g1.nb_ta, "
+                    + "g1.nb_ttl1, "
+                    + "g1.nb_tsa, "
+                    + "g1.avgsec_a, "
+                    + "g1.avgsec_t, "
+                    + "CASE "
+                    + "WHEN G1.NB_T::numeric=0::numeric then 0::numeric "
+                    + " else  CAST((G1.NB_tA::numeric/G1.NB_T::numeric)*100::numeric AS DECIMAL(10,2)) "
+                    + "END AS PERAPT, "
+                    + "CASE "
+                    + "WHEN G1.NB_T::numeric=0::numeric then 0::numeric "
+                    + " else  CAST((G1.NB_tTL1::numeric/G1.NB_T::numeric)*100::numeric AS DECIMAL(10,2)) "
+                    + "END AS PERTL1PT, "
+                    + "CASE "
+                    + "WHEN G1.NB_T::numeric=0::numeric then 0::numeric "
+                    + " else  CAST((G1.NB_tSA::numeric/G1.NB_T::numeric)*100::numeric AS DECIMAL(10,2)) "
+                    + "END AS PERSAPT "
+                    + "from "
+                    + "(SELECT "
+                    + "t1.deal_win, "
+                    + "w.name as guichet, "
+                    + "( select count(*)from t_ticket t2 where t2.deal_win=t1.deal_win " + dateCon + ") as nb_t, "
+                    + "( select count(*)from t_ticket t2 where t2.deal_win=t1.deal_win and t2.status=4 " + dateCon + ") as  nb_tt, "
+                    + "( select count(*)from t_ticket t2 where t2.deal_win=t1.deal_win and t2.status=2 " + dateCon + ") as  nb_ta, "
+                    + "( select count(*)from t_ticket t2 where t2.deal_win=t1.deal_win and DATE_PART('epoch'::text,T2.FINISH_TIME-T2.START_TIME)::numeric/60::numeric<=1 and t2.status=4 " + dateCon + ") as nb_ttl1, "
+                    + "( select count(*)from t_ticket t2 where t2.deal_win=t1.deal_win and t2.status=0 " + dateCon + ") as  nb_tsa, "
+                    + "(SELECT AVG(DATE_PART('epoch'::text,T2.CALL_TIME-T2.TICKET_TIME)::numeric) from T_TICKET T2 WHERE t2.deal_win=t1.deal_win and T2.call_time is not null " + dateCon + ") AS AVGSEC_A, "
+                    + "(SELECT AVG(DATE_PART('epoch'::text,T2.FINISH_TIME-T2.START_TIME)::numeric) from T_TICKET T2 WHERE t2.deal_win=t1.deal_win and T2.STATUS=4 " + dateCon + ") AS AVGSEC_T "
+                    + "from "
+                    + "t_ticket t1, "
+                    + "t_window w "
+                    + "where t1.deal_win=w.id and to_date(to_char(t1.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD')"
+                    + "group by t1.deal_win,w.name)g1 "
+                    + ";";
+            ResultSet r = con.createStatement().executeQuery(SQL);
+            while (r.next()) {
+                ArrayList<String> row = new ArrayList<>();
+                String id = r.getString("deal_win");
+                row.add(r.getString("guichet"));
+                row.add(r.getLong("nb_t") + "");
+                row.add(r.getLong("nb_tt") + "");
+                row.add(r.getLong("nb_ta") + "");
+                row.add(r.getLong("nb_ttl1") + "");
+                row.add(r.getLong("nb_tsa") + "");
+                row.add(r.getFloat("perApT") + "%");
+                row.add(r.getFloat("PERTL1pt") + "%");
+                row.add(r.getFloat("perSApT") + "%");
+                row.add(getFormatedTime(r.getFloat("avgSec_A")));
+                row.add("--");
+                row.add("--%");
+                row.add(getFormatedTime(r.getFloat("avgSec_T")));
+                row.add("--");
+                row.add("-%");
+
+                table.add(row);
+            }
+            String subTotalSQL = "SELECT G1.NB_T, "
+                    + "G1.NB_TT, "
+                    + "G1.NB_A, "
+                    + "G1.NB_TL1, "
+                    + "G1.NB_SA, "
+                    + "CASE "
+                    + "WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric "
+                    + "ELSE CAST((G1.NB_A::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2)) "
+                    + "END AS PERAPT, "
+                    + "CASE "
+                    + "WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric "
+                    + "ELSE CAST((G1.NB_TL1::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2)) "
+                    + "END AS PERTL1PT, "
+                    + "CASE "
+                    + "WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric "
+                    + "ELSE CAST((G1.NB_SA::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2)) "
+                    + "END AS PERSAPT, "
+                    + "G1.AVGSEC_A, "
+                    + "G1.AVGSEC_T "
+                    + "FROM "
+                    + "(SELECT "
+                    + "(SELECT COUNT(*) "
+                    + "FROM T_TICKET T2 "
+                    + "WHERE 1 = 1 "
+                    + " " + dateCon + " and t2.deal_user is not null) AS NB_T, "
+                    + " "
+                    + "(SELECT COUNT(*) "
+                    + "FROM T_TICKET T2 "
+                    + "WHERE T2.STATUS = 4 "
+                    + " " + dateCon + "  and t2.deal_user is not null) AS NB_TT, "
+                    + " "
+                    + "(SELECT COUNT(*) "
+                    + "FROM T_TICKET T2 "
+                    + "WHERE T2.STATUS = 2 "
+                    + " " + dateCon + "  and t2.deal_user is not null) AS NB_A, "
+                    + " "
+                    + "(SELECT COUNT(*) "
+                    + "FROM T_TICKET T2 "
+                    + "WHERE DATE_PART('epoch'::text, T2.FINISH_TIME - T2.START_TIME)::numeric / 60::numeric <= 1 "
+                    + "AND T2.STATUS = 4 "
+                    + " " + dateCon + "  and t2.deal_user is not null) AS NB_TL1, "
+                    + " "
+                    + "(SELECT COUNT(*) "
+                    + "FROM T_TICKET T2 "
+                    + "WHERE T2.STATUS = 0 "
+                    + " " + dateCon + "  and t2.deal_user is not null) AS NB_SA, "
+                    + " "
+                    + "(SELECT AVG(DATE_PART('epoch'::text, T2.CALL_TIME - T2.TICKET_TIME)::numeric) "
+                    + "FROM T_TICKET T2 "
+                    + "WHERE T2.call_time is not null "
+                    + " " + dateCon + "  and t2.deal_user is not null) AS AVGSEC_A, "
+                    + " "
+                    + "(SELECT AVG(DATE_PART('epoch'::text, T2.FINISH_TIME - T2.START_TIME)::numeric) "
+                    + "FROM T_TICKET T2 "
+                    + "WHERE T2.STATUS = 4 "
+                    + " " + dateCon + "  and t2.deal_user is not null) AS AVGSEC_T "
+                    + "FROM T_TICKET T1 "
+                    + "WHERE t1.deal_user is not null and TO_DATE(TO_CHAR(T1.TICKET_TIME,'YYYY-MM-DD'),'YYYY-MM-DD') BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') limit 1 ) G1 ;";
+            r = con.createStatement().executeQuery(subTotalSQL);
+            while (r.next()) {
+                ArrayList<String> row = new ArrayList<>();
+                row.add("Sous-Totale");
+                row.add(r.getLong("nb_t") + "");
+                row.add(r.getLong("nb_tt") + "");
+                row.add(r.getLong("nb_a") + "");
+                row.add(r.getLong("nb_tl1") + "");
+                row.add(r.getLong("nb_sa") + "");
+                row.add(r.getFloat("perApT") + "%");
+                row.add(r.getFloat("PERTL1pt") + "%");
+                row.add(r.getFloat("perSApT") + "%");
+                row.add(getFormatedTime(r.getFloat("avgSec_A")));
+                row.add("--");
+                row.add("--%");
+                row.add(getFormatedTime(r.getFloat("avgSec_T")));
+                row.add("--");
+                row.add("-%");
+                table.add(row);
+            }
+            con.close();
+        } catch (Exception e) {
+            logger.error(e.getMessage());
         }
-        String subTotalSQL = "SELECT G1.NB_T, "
-                + "G1.NB_TT, "
-                + "G1.NB_A, "
-                + "G1.NB_TL1, "
-                + "G1.NB_SA, "
-                + "CASE "
-                + "WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric "
-                + "ELSE CAST((G1.NB_A::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2)) "
-                + "END AS PERAPT, "
-                + "CASE "
-                + "WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric "
-                + "ELSE CAST((G1.NB_TL1::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2)) "
-                + "END AS PERTL1PT, "
-                + "CASE "
-                + "WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric "
-                + "ELSE CAST((G1.NB_SA::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2)) "
-                + "END AS PERSAPT, "
-                + "G1.AVGSEC_A, "
-                + "G1.AVGSEC_T "
-                + "FROM "
-                + "(SELECT "
-                + "(SELECT COUNT(*) "
-                + "FROM T_TICKET T2 "
-                + "WHERE 1 = 1 "
-                + " " + dateCon + " and t2.deal_user is not null) AS NB_T, "
-                + " "
-                + "(SELECT COUNT(*) "
-                + "FROM T_TICKET T2 "
-                + "WHERE T2.STATUS = 4 "
-                + " " + dateCon + "  and t2.deal_user is not null) AS NB_TT, "
-                + " "
-                + "(SELECT COUNT(*) "
-                + "FROM T_TICKET T2 "
-                + "WHERE T2.STATUS = 2 "
-                + " " + dateCon + "  and t2.deal_user is not null) AS NB_A, "
-                + " "
-                + "(SELECT COUNT(*) "
-                + "FROM T_TICKET T2 "
-                + "WHERE DATE_PART('epoch'::text, T2.FINISH_TIME - T2.START_TIME)::numeric / 60::numeric <= 1 "
-                + "AND T2.STATUS = 4 "
-                + " " + dateCon + "  and t2.deal_user is not null) AS NB_TL1, "
-                + " "
-                + "(SELECT COUNT(*) "
-                + "FROM T_TICKET T2 "
-                + "WHERE T2.STATUS = 0 "
-                + " " + dateCon + "  and t2.deal_user is not null) AS NB_SA, "
-                + " "
-                + "(SELECT AVG(DATE_PART('epoch'::text, T2.CALL_TIME - T2.TICKET_TIME)::numeric) "
-                + "FROM T_TICKET T2 "
-                + "WHERE T2.call_time is not null "
-                + " " + dateCon + "  and t2.deal_user is not null) AS AVGSEC_A, "
-                + " "
-                + "(SELECT AVG(DATE_PART('epoch'::text, T2.FINISH_TIME - T2.START_TIME)::numeric) "
-                + "FROM T_TICKET T2 "
-                + "WHERE T2.STATUS = 4 "
-                + " " + dateCon + "  and t2.deal_user is not null) AS AVGSEC_T "
-                + "FROM T_TICKET T1 "
-                + "WHERE t1.deal_user is not null and TO_DATE(TO_CHAR(T1.TICKET_TIME,'YYYY-MM-DD'),'YYYY-MM-DD') BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') limit 1 ) G1 ;";
-        r = con.getStatement().executeQuery(subTotalSQL);
-        while (r.next()) {
-            ArrayList<String> row = new ArrayList<>();
-            row.add("Sous-Totale");
-            row.add(r.getLong("nb_t") + "");
-            row.add(r.getLong("nb_tt") + "");
-            row.add(r.getLong("nb_a") + "");
-            row.add(r.getLong("nb_tl1") + "");
-            row.add(r.getLong("nb_sa") + "");
-            row.add(r.getFloat("perApT") + "%");
-            row.add(r.getFloat("PERTL1pt") + "%");
-            row.add(r.getFloat("perSApT") + "%");
-            row.add(getFormatedTime(r.getFloat("avgSec_A")));
-            row.add("--");
-            row.add("--%");
-            row.add(getFormatedTime(r.getFloat("avgSec_T")));
-            row.add("--");
-            row.add("-%");
-            table.add(row);
-        }
-        con.closeConnection();
         return table;
     }
 
-    public List<ArrayList<String>> generateGchServiceTable(HttpServletRequest request, String d1, String d2, String db) throws SQLException, IOException, ClassNotFoundException, FileNotFoundException, ParserConfigurationException, SAXException, Exception {
+    public List<ArrayList<String>> generateGchServiceTable(HttpServletRequest request, String d1, String d2, String db) {
         this.date1 = (d1 == null) ? format.format(new Date()) : d1;
         this.date2 = (d2 == null) ? format.format(new Date()) : d2;
         this.DB = db;
         table.clear();
-        CfgHandler cfg = new CfgHandler(request);
-        String dateCon = " and to_date(to_char(t2.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') ";
 
-        String SQL = "SELECT G1.DEAL_WIN, "
-                + "G1.GUICHET, "
-                + "g1.service, "
-                + "G1.NB_T, "
-                + "G1.NB_TT, "
-                + "G1.NB_TA, "
-                + "G1.NB_TTL1, "
-                + "G1.NB_TSA, "
-                + "G1.AVGSEC_A, "
-                + "G1.AVGSEC_T, "
-                + "CASE "
-                + "WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric "
-                + "ELSE CAST((G1.NB_TA::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2)) "
-                + "END AS PERAPT, "
-                + "CASE "
-                + "WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric "
-                + "ELSE CAST((G1.NB_TTL1::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2)) "
-                + "END AS PERTL1PT, "
-                + "CASE "
-                + "WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric "
-                + "ELSE CAST((G1.NB_TSA::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2)) "
-                + "END AS PERSAPT "
-                + "FROM "
-                + "(SELECT T1.DEAL_WIN, "
-                + " t1.biz_type_id, "
-                + "W.NAME AS GUICHET, "
-                + " b.name as service, "
-                + " "
-                + "(SELECT COUNT(*) "
-                + "FROM T_TICKET T2 "
-                + "WHERE T2.DEAL_WIN = T1.DEAL_WIN and T2.biz_type_id=t1.biz_type_id " + dateCon + ") AS NB_T, "
-                + " "
-                + "(SELECT COUNT(*) "
-                + "FROM T_TICKET T2 "
-                + "WHERE T2.DEAL_WIN = T1.DEAL_WIN "
-                + "AND T2.STATUS = 4 and T2.biz_type_id=t1.biz_type_id  " + dateCon + ") AS NB_TT, "
-                + " "
-                + "(SELECT COUNT(*) "
-                + "FROM T_TICKET T2 "
-                + "WHERE T2.DEAL_WIN = T1.DEAL_WIN and T2.biz_type_id=t1.biz_type_id "
-                + "AND T2.STATUS = 2  " + dateCon + ") AS NB_TA, "
-                + " "
-                + "(SELECT COUNT(*) "
-                + "FROM T_TICKET T2 "
-                + "WHERE T2.DEAL_WIN = T1.DEAL_WIN "
-                + "AND DATE_PART('epoch'::text, "
-                + " "
-                + "T2.FINISH_TIME - T2.START_TIME)::numeric / 60::numeric <= 1 "
-                + "AND T2.STATUS = 4 and T2.biz_type_id=t1.biz_type_id " + dateCon + ") AS NB_TTL1, "
-                + " "
-                + "(SELECT COUNT(*) "
-                + "FROM T_TICKET T2 "
-                + "WHERE T2.DEAL_WIN = T1.DEAL_WIN "
-                + "AND T2.STATUS = 0 and T2.biz_type_id=t1.biz_type_id " + dateCon + ") AS NB_TSA, "
-                + " "
-                + "(SELECT AVG(DATE_PART('epoch'::text, "
-                + " "
-                + "T2.CALL_TIME - T2.TICKET_TIME)::numeric) "
-                + "FROM T_TICKET T2 "
-                + "WHERE T2.DEAL_WIN = T1.DEAL_WIN "
-                + "AND T2.CALL_TIME IS NOT NULL and T2.biz_type_id=t1.biz_type_id " + dateCon + ") AS AVGSEC_A, "
-                + " "
-                + "(SELECT AVG(DATE_PART('epoch'::text,T2.FINISH_TIME - T2.START_TIME)::numeric) "
-                + "FROM T_TICKET T2 "
-                + "WHERE T2.DEAL_WIN = T1.DEAL_WIN "
-                + "AND T2.STATUS = 4 and T2.biz_type_id=t1.biz_type_id " + dateCon + ") AS AVGSEC_T "
-                + "FROM T_TICKET T1, "
-                + "T_WINDOW W , t_biz_type b "
-                + "WHERE T1.DEAL_WIN = W.ID and T1.biz_type_id = b.id  and to_date(to_char(t1.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD')"
-                + "GROUP BY T1.DEAL_WIN, "
-                + "W.NAME,b.name,t1.biz_type_id) G1;";
-        PgConnection con = new PgConnection();
-        ResultSet r = con.getStatement().executeQuery(SQL);
-        while (r.next()) {
-            ArrayList<String> row = new ArrayList<>();
-            String id = r.getString("deal_win");
-            row.add(r.getString("guichet"));
-            row.add(r.getString("service"));
-            row.add(r.getLong("nb_t") + "");
-            row.add(r.getLong("nb_tt") + "");
-            row.add(r.getLong("nb_ta") + "");
-            row.add(r.getLong("nb_ttl1") + "");
-            row.add(r.getLong("nb_tsa") + "");
-            row.add(r.getFloat("perApT") + "%");
-            row.add(r.getFloat("PERTL1pt") + "%");
-            row.add(r.getFloat("perSApT") + "%");
-            row.add(getFormatedTime(r.getFloat("avgSec_A")));
-            row.add("--");
-            row.add("--%");
-            row.add(getFormatedTime(r.getFloat("avgSec_T")));
-            row.add("--");
-            row.add("-%");
+        try (Connection con = new CPConnection().getConnection()) {
+            String dateCon = " and to_date(to_char(t2.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') ";
 
-            table.add(row);
+            String SQL = "SELECT G1.DEAL_WIN, "
+                    + "G1.GUICHET, "
+                    + "g1.service, "
+                    + "G1.NB_T, "
+                    + "G1.NB_TT, "
+                    + "G1.NB_TA, "
+                    + "G1.NB_TTL1, "
+                    + "G1.NB_TSA, "
+                    + "G1.AVGSEC_A, "
+                    + "G1.AVGSEC_T, "
+                    + "CASE "
+                    + "WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric "
+                    + "ELSE CAST((G1.NB_TA::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2)) "
+                    + "END AS PERAPT, "
+                    + "CASE "
+                    + "WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric "
+                    + "ELSE CAST((G1.NB_TTL1::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2)) "
+                    + "END AS PERTL1PT, "
+                    + "CASE "
+                    + "WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric "
+                    + "ELSE CAST((G1.NB_TSA::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2)) "
+                    + "END AS PERSAPT "
+                    + "FROM "
+                    + "(SELECT T1.DEAL_WIN, "
+                    + " t1.biz_type_id, "
+                    + "W.NAME AS GUICHET, "
+                    + " b.name as service, "
+                    + " "
+                    + "(SELECT COUNT(*) "
+                    + "FROM T_TICKET T2 "
+                    + "WHERE T2.DEAL_WIN = T1.DEAL_WIN and T2.biz_type_id=t1.biz_type_id " + dateCon + ") AS NB_T, "
+                    + " "
+                    + "(SELECT COUNT(*) "
+                    + "FROM T_TICKET T2 "
+                    + "WHERE T2.DEAL_WIN = T1.DEAL_WIN "
+                    + "AND T2.STATUS = 4 and T2.biz_type_id=t1.biz_type_id  " + dateCon + ") AS NB_TT, "
+                    + " "
+                    + "(SELECT COUNT(*) "
+                    + "FROM T_TICKET T2 "
+                    + "WHERE T2.DEAL_WIN = T1.DEAL_WIN and T2.biz_type_id=t1.biz_type_id "
+                    + "AND T2.STATUS = 2  " + dateCon + ") AS NB_TA, "
+                    + " "
+                    + "(SELECT COUNT(*) "
+                    + "FROM T_TICKET T2 "
+                    + "WHERE T2.DEAL_WIN = T1.DEAL_WIN "
+                    + "AND DATE_PART('epoch'::text, "
+                    + " "
+                    + "T2.FINISH_TIME - T2.START_TIME)::numeric / 60::numeric <= 1 "
+                    + "AND T2.STATUS = 4 and T2.biz_type_id=t1.biz_type_id " + dateCon + ") AS NB_TTL1, "
+                    + " "
+                    + "(SELECT COUNT(*) "
+                    + "FROM T_TICKET T2 "
+                    + "WHERE T2.DEAL_WIN = T1.DEAL_WIN "
+                    + "AND T2.STATUS = 0 and T2.biz_type_id=t1.biz_type_id " + dateCon + ") AS NB_TSA, "
+                    + " "
+                    + "(SELECT AVG(DATE_PART('epoch'::text, "
+                    + " "
+                    + "T2.CALL_TIME - T2.TICKET_TIME)::numeric) "
+                    + "FROM T_TICKET T2 "
+                    + "WHERE T2.DEAL_WIN = T1.DEAL_WIN "
+                    + "AND T2.CALL_TIME IS NOT NULL and T2.biz_type_id=t1.biz_type_id " + dateCon + ") AS AVGSEC_A, "
+                    + " "
+                    + "(SELECT AVG(DATE_PART('epoch'::text,T2.FINISH_TIME - T2.START_TIME)::numeric) "
+                    + "FROM T_TICKET T2 "
+                    + "WHERE T2.DEAL_WIN = T1.DEAL_WIN "
+                    + "AND T2.STATUS = 4 and T2.biz_type_id=t1.biz_type_id " + dateCon + ") AS AVGSEC_T "
+                    + "FROM T_TICKET T1, "
+                    + "T_WINDOW W , t_biz_type b "
+                    + "WHERE T1.DEAL_WIN = W.ID and T1.biz_type_id = b.id  and to_date(to_char(t1.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD')"
+                    + "GROUP BY T1.DEAL_WIN, "
+                    + "W.NAME,b.name,t1.biz_type_id) G1;";
+
+            ResultSet r = con.createStatement().executeQuery(SQL);
+            while (r.next()) {
+                ArrayList<String> row = new ArrayList<>();
+                String id = r.getString("deal_win");
+                row.add(r.getString("guichet"));
+                row.add(r.getString("service"));
+                row.add(r.getLong("nb_t") + "");
+                row.add(r.getLong("nb_tt") + "");
+                row.add(r.getLong("nb_ta") + "");
+                row.add(r.getLong("nb_ttl1") + "");
+                row.add(r.getLong("nb_tsa") + "");
+                row.add(r.getFloat("perApT") + "%");
+                row.add(r.getFloat("PERTL1pt") + "%");
+                row.add(r.getFloat("perSApT") + "%");
+                row.add(getFormatedTime(r.getFloat("avgSec_A")));
+                row.add("--");
+                row.add("--%");
+                row.add(getFormatedTime(r.getFloat("avgSec_T")));
+                row.add("--");
+                row.add("-%");
+
+                table.add(row);
+            }
+            String subTotalSQL = "SELECT G1.NB_T, "
+                    + "G1.NB_TT, "
+                    + "G1.NB_A, "
+                    + "G1.NB_TL1, "
+                    + "G1.NB_SA, "
+                    + "CASE "
+                    + "WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric "
+                    + "ELSE CAST((G1.NB_A::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2)) "
+                    + "END AS PERAPT, "
+                    + "CASE "
+                    + "WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric "
+                    + "ELSE CAST((G1.NB_TL1::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2)) "
+                    + "END AS PERTL1PT, "
+                    + "CASE "
+                    + "WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric "
+                    + "ELSE CAST((G1.NB_SA::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2)) "
+                    + "END AS PERSAPT, "
+                    + "G1.AVGSEC_A, "
+                    + "G1.AVGSEC_T "
+                    + "FROM "
+                    + "(SELECT "
+                    + "(SELECT COUNT(*) "
+                    + "FROM T_TICKET T2 "
+                    + "WHERE 1 = 1 "
+                    + " " + dateCon + " and t2.deal_win is not null) AS NB_T, "
+                    + " "
+                    + "(SELECT COUNT(*) "
+                    + "FROM T_TICKET T2 "
+                    + "WHERE T2.STATUS = 4 "
+                    + " " + dateCon + "  and t2.deal_win is not null) AS NB_TT, "
+                    + " "
+                    + "(SELECT COUNT(*) "
+                    + "FROM T_TICKET T2 "
+                    + "WHERE T2.STATUS = 2 "
+                    + " " + dateCon + "  and t2.deal_win is not null) AS NB_A, "
+                    + " "
+                    + "(SELECT COUNT(*) "
+                    + "FROM T_TICKET T2 "
+                    + "WHERE DATE_PART('epoch'::text, T2.FINISH_TIME - T2.START_TIME)::numeric / 60::numeric <= 1 "
+                    + "AND T2.STATUS = 4 "
+                    + " " + dateCon + "  and t2.deal_win is not null) AS NB_TL1, "
+                    + " "
+                    + "(SELECT COUNT(*) "
+                    + "FROM T_TICKET T2 "
+                    + "WHERE T2.STATUS = 0 "
+                    + " " + dateCon + "  and t2.deal_win is not null) AS NB_SA, "
+                    + " "
+                    + "(SELECT AVG(DATE_PART('epoch'::text, T2.CALL_TIME - T2.TICKET_TIME)::numeric) "
+                    + "FROM T_TICKET T2 "
+                    + "WHERE T2.call_time is not null "
+                    + " " + dateCon + "  and t2.deal_win is not null) AS AVGSEC_A, "
+                    + " "
+                    + "(SELECT AVG(DATE_PART('epoch'::text, T2.FINISH_TIME - T2.START_TIME)::numeric) "
+                    + "FROM T_TICKET T2 "
+                    + "WHERE T2.STATUS = 4 "
+                    + " " + dateCon + "  and t2.deal_win is not null) AS AVGSEC_T "
+                    + "FROM T_TICKET T1 "
+                    + "WHERE t1.deal_win is not null and TO_DATE(TO_CHAR(T1.TICKET_TIME,'YYYY-MM-DD'),'YYYY-MM-DD') BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') limit 1 ) G1 ;";
+            r = con.createStatement().executeQuery(subTotalSQL);
+            while (r.next()) {
+                ArrayList<String> row = new ArrayList<>();
+                row.add("Sous-Totale");
+                row.add("Sous-Totale");
+                row.add(r.getLong("nb_t") + "");
+                row.add(r.getLong("nb_tt") + "");
+                row.add(r.getLong("nb_a") + "");
+                row.add(r.getLong("nb_tl1") + "");
+                row.add(r.getLong("nb_sa") + "");
+                row.add(r.getFloat("perApT") + "%");
+                row.add(r.getFloat("PERTL1pt") + "%");
+                row.add(r.getFloat("perSApT") + "%");
+                row.add(getFormatedTime(r.getFloat("avgSec_A")));
+                row.add("--");
+                row.add("--%");
+                row.add(getFormatedTime(r.getFloat("avgSec_T")));
+                row.add("--");
+                row.add("-%");
+                table.add(row);
+            }
+            con.close();
+        } catch (Exception e) {
+            logger.error(e.getMessage());
         }
-        String subTotalSQL = "SELECT G1.NB_T, "
-                + "G1.NB_TT, "
-                + "G1.NB_A, "
-                + "G1.NB_TL1, "
-                + "G1.NB_SA, "
-                + "CASE "
-                + "WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric "
-                + "ELSE CAST((G1.NB_A::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2)) "
-                + "END AS PERAPT, "
-                + "CASE "
-                + "WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric "
-                + "ELSE CAST((G1.NB_TL1::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2)) "
-                + "END AS PERTL1PT, "
-                + "CASE "
-                + "WHEN G1.NB_T::numeric = 0::numeric THEN 0::numeric "
-                + "ELSE CAST((G1.NB_SA::numeric / G1.NB_T::numeric) * 100::numeric AS DECIMAL(10,2)) "
-                + "END AS PERSAPT, "
-                + "G1.AVGSEC_A, "
-                + "G1.AVGSEC_T "
-                + "FROM "
-                + "(SELECT "
-                + "(SELECT COUNT(*) "
-                + "FROM T_TICKET T2 "
-                + "WHERE 1 = 1 "
-                + " " + dateCon + " and t2.deal_win is not null) AS NB_T, "
-                + " "
-                + "(SELECT COUNT(*) "
-                + "FROM T_TICKET T2 "
-                + "WHERE T2.STATUS = 4 "
-                + " " + dateCon + "  and t2.deal_win is not null) AS NB_TT, "
-                + " "
-                + "(SELECT COUNT(*) "
-                + "FROM T_TICKET T2 "
-                + "WHERE T2.STATUS = 2 "
-                + " " + dateCon + "  and t2.deal_win is not null) AS NB_A, "
-                + " "
-                + "(SELECT COUNT(*) "
-                + "FROM T_TICKET T2 "
-                + "WHERE DATE_PART('epoch'::text, T2.FINISH_TIME - T2.START_TIME)::numeric / 60::numeric <= 1 "
-                + "AND T2.STATUS = 4 "
-                + " " + dateCon + "  and t2.deal_win is not null) AS NB_TL1, "
-                + " "
-                + "(SELECT COUNT(*) "
-                + "FROM T_TICKET T2 "
-                + "WHERE T2.STATUS = 0 "
-                + " " + dateCon + "  and t2.deal_win is not null) AS NB_SA, "
-                + " "
-                + "(SELECT AVG(DATE_PART('epoch'::text, T2.CALL_TIME - T2.TICKET_TIME)::numeric) "
-                + "FROM T_TICKET T2 "
-                + "WHERE T2.call_time is not null "
-                + " " + dateCon + "  and t2.deal_win is not null) AS AVGSEC_A, "
-                + " "
-                + "(SELECT AVG(DATE_PART('epoch'::text, T2.FINISH_TIME - T2.START_TIME)::numeric) "
-                + "FROM T_TICKET T2 "
-                + "WHERE T2.STATUS = 4 "
-                + " " + dateCon + "  and t2.deal_win is not null) AS AVGSEC_T "
-                + "FROM T_TICKET T1 "
-                + "WHERE t1.deal_win is not null and TO_DATE(TO_CHAR(T1.TICKET_TIME,'YYYY-MM-DD'),'YYYY-MM-DD') BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') limit 1 ) G1 ;";
-        r = con.getStatement().executeQuery(subTotalSQL);
-        while (r.next()) {
-            ArrayList<String> row = new ArrayList<>();
-            row.add("Sous-Totale");
-            row.add("Sous-Totale");
-            row.add(r.getLong("nb_t") + "");
-            row.add(r.getLong("nb_tt") + "");
-            row.add(r.getLong("nb_a") + "");
-            row.add(r.getLong("nb_tl1") + "");
-            row.add(r.getLong("nb_sa") + "");
-            row.add(r.getFloat("perApT") + "%");
-            row.add(r.getFloat("PERTL1pt") + "%");
-            row.add(r.getFloat("perSApT") + "%");
-            row.add(getFormatedTime(r.getFloat("avgSec_A")));
-            row.add("--");
-            row.add("--%");
-            row.add(getFormatedTime(r.getFloat("avgSec_T")));
-            row.add("--");
-            row.add("-%");
-            table.add(row);
-        }
-        con.closeConnection();
         return table;
     }
 
-    public void generateNdtChart(HttpServletRequest request, String d1, String d2, String db) throws SQLException, IOException, ClassNotFoundException, FileNotFoundException, ParserConfigurationException, SAXException, Exception {
+    public void generateNdtChart(HttpServletRequest request, String d1, String d2, String db) {
         this.date1 = (d1 == null) ? format.format(new Date()) : d1;
         this.date2 = (d2 == null) ? format.format(new Date()) : d2;
         this.DB = db;
-        CfgHandler cfg = new CfgHandler(request);
-        String dateCon = " and to_date(to_char(t2.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') ";
+        try (Connection con = new CPConnection().getConnection()) {
+            String dateCon = " and to_date(to_char(t2.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') ";
 
-        String SQL = "Select "
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('00:00:00','HH24:MI:SS')::time and to_timestamp('00:59:59','HH24:MI:SS')::time " + dateCon + ") as h0,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('01:00:00','HH24:MI:SS')::time and to_timestamp('01:59:59','HH24:MI:SS')::time " + dateCon + ") as h1,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('02:00:00','HH24:MI:SS')::time and to_timestamp('02:59:59','HH24:MI:SS')::time " + dateCon + ") as h2,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('03:00:00','HH24:MI:SS')::time and to_timestamp('03:59:59','HH24:MI:SS')::time " + dateCon + ") as h3,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('04:00:00','HH24:MI:SS')::time and to_timestamp('04:59:59','HH24:MI:SS')::time " + dateCon + ") as h4,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('05:00:00','HH24:MI:SS')::time and to_timestamp('05:59:59','HH24:MI:SS')::time " + dateCon + ") as h5,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('06:00:00','HH24:MI:SS')::time and to_timestamp('06:59:59','HH24:MI:SS')::time " + dateCon + ") as h6,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('07:00:00','HH24:MI:SS')::time and to_timestamp('07:59:59','HH24:MI:SS')::time " + dateCon + ") as h7,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('08:00:00','HH24:MI:SS')::time and to_timestamp('08:59:59','HH24:MI:SS')::time " + dateCon + ") as h8,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('09:00:00','HH24:MI:SS')::time and to_timestamp('09:59:59','HH24:MI:SS')::time " + dateCon + ") as h9,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('10:00:00','HH24:MI:SS')::time and to_timestamp('10:59:59','HH24:MI:SS')::time " + dateCon + ") as h10,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('11:00:00','HH24:MI:SS')::time and to_timestamp('11:59:59','HH24:MI:SS')::time " + dateCon + ") as h11,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('12:00:00','HH24:MI:SS')::time and to_timestamp('12:59:59','HH24:MI:SS')::time " + dateCon + ") as h12,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('13:00:00','HH24:MI:SS')::time and to_timestamp('13:59:59','HH24:MI:SS')::time " + dateCon + ") as h13,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('14:00:00','HH24:MI:SS')::time and to_timestamp('14:59:59','HH24:MI:SS')::time " + dateCon + ") as h14,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('15:00:00','HH24:MI:SS')::time and to_timestamp('15:59:59','HH24:MI:SS')::time " + dateCon + ") as h15,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('16:00:00','HH24:MI:SS')::time and to_timestamp('16:59:59','HH24:MI:SS')::time " + dateCon + ") as h16,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('17:00:00','HH24:MI:SS')::time and to_timestamp('17:59:59','HH24:MI:SS')::time " + dateCon + ") as h17,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('18:00:00','HH24:MI:SS')::time and to_timestamp('18:59:59','HH24:MI:SS')::time " + dateCon + ") as h18,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('19:00:00','HH24:MI:SS')::time and to_timestamp('19:59:59','HH24:MI:SS')::time " + dateCon + ") as h19,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('20:00:00','HH24:MI:SS')::time and to_timestamp('20:59:59','HH24:MI:SS')::time " + dateCon + ") as h20,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('21:00:00','HH24:MI:SS')::time and to_timestamp('21:59:59','HH24:MI:SS')::time " + dateCon + ") as h21,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('22:00:00','HH24:MI:SS')::time and to_timestamp('22:59:59','HH24:MI:SS')::time " + dateCon + ") as h22,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('23:00:00','HH24:MI:SS')::time and to_timestamp('23:59:59','HH24:MI:SS')::time " + dateCon + ") as h23"
-                + ";";
-        PgConnection con = new PgConnection();
-        ResultSet r = con.getStatement().executeQuery(SQL);
-        if (r.next()) {
-            ArrayList row = new ArrayList();
-            row.add(r.getString("h0"));
-            row.add(r.getString("h1"));
-            row.add(r.getString("h2"));
-            row.add(r.getString("h3"));
-            row.add(r.getString("h4"));
-            row.add(r.getString("h5"));
-            row.add(r.getString("h6"));
-            row.add(r.getString("h7"));
-            row.add(r.getString("h8"));
-            row.add(r.getString("h9"));
-            row.add(r.getString("h10"));
-            row.add(r.getString("h11"));
-            row.add(r.getString("h12"));
-            row.add(r.getString("h13"));
-            row.add(r.getString("h14"));
-            row.add(r.getString("h15"));
-            row.add(r.getString("h16"));
-            row.add(r.getString("h17"));
-            row.add(r.getString("h18"));
-            row.add(r.getString("h19"));
-            row.add(r.getString("h20"));
-            row.add(r.getString("h21"));
-            row.add(r.getString("h22"));
-            row.add(r.getString("h23"));
+            String SQL = "Select "
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('00:00:00','HH24:MI:SS')::time and to_timestamp('00:59:59','HH24:MI:SS')::time " + dateCon + ") as h0,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('01:00:00','HH24:MI:SS')::time and to_timestamp('01:59:59','HH24:MI:SS')::time " + dateCon + ") as h1,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('02:00:00','HH24:MI:SS')::time and to_timestamp('02:59:59','HH24:MI:SS')::time " + dateCon + ") as h2,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('03:00:00','HH24:MI:SS')::time and to_timestamp('03:59:59','HH24:MI:SS')::time " + dateCon + ") as h3,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('04:00:00','HH24:MI:SS')::time and to_timestamp('04:59:59','HH24:MI:SS')::time " + dateCon + ") as h4,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('05:00:00','HH24:MI:SS')::time and to_timestamp('05:59:59','HH24:MI:SS')::time " + dateCon + ") as h5,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('06:00:00','HH24:MI:SS')::time and to_timestamp('06:59:59','HH24:MI:SS')::time " + dateCon + ") as h6,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('07:00:00','HH24:MI:SS')::time and to_timestamp('07:59:59','HH24:MI:SS')::time " + dateCon + ") as h7,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('08:00:00','HH24:MI:SS')::time and to_timestamp('08:59:59','HH24:MI:SS')::time " + dateCon + ") as h8,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('09:00:00','HH24:MI:SS')::time and to_timestamp('09:59:59','HH24:MI:SS')::time " + dateCon + ") as h9,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('10:00:00','HH24:MI:SS')::time and to_timestamp('10:59:59','HH24:MI:SS')::time " + dateCon + ") as h10,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('11:00:00','HH24:MI:SS')::time and to_timestamp('11:59:59','HH24:MI:SS')::time " + dateCon + ") as h11,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('12:00:00','HH24:MI:SS')::time and to_timestamp('12:59:59','HH24:MI:SS')::time " + dateCon + ") as h12,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('13:00:00','HH24:MI:SS')::time and to_timestamp('13:59:59','HH24:MI:SS')::time " + dateCon + ") as h13,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('14:00:00','HH24:MI:SS')::time and to_timestamp('14:59:59','HH24:MI:SS')::time " + dateCon + ") as h14,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('15:00:00','HH24:MI:SS')::time and to_timestamp('15:59:59','HH24:MI:SS')::time " + dateCon + ") as h15,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('16:00:00','HH24:MI:SS')::time and to_timestamp('16:59:59','HH24:MI:SS')::time " + dateCon + ") as h16,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('17:00:00','HH24:MI:SS')::time and to_timestamp('17:59:59','HH24:MI:SS')::time " + dateCon + ") as h17,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('18:00:00','HH24:MI:SS')::time and to_timestamp('18:59:59','HH24:MI:SS')::time " + dateCon + ") as h18,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('19:00:00','HH24:MI:SS')::time and to_timestamp('19:59:59','HH24:MI:SS')::time " + dateCon + ") as h19,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('20:00:00','HH24:MI:SS')::time and to_timestamp('20:59:59','HH24:MI:SS')::time " + dateCon + ") as h20,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('21:00:00','HH24:MI:SS')::time and to_timestamp('21:59:59','HH24:MI:SS')::time " + dateCon + ") as h21,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('22:00:00','HH24:MI:SS')::time and to_timestamp('22:59:59','HH24:MI:SS')::time " + dateCon + ") as h22,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('23:00:00','HH24:MI:SS')::time and to_timestamp('23:59:59','HH24:MI:SS')::time " + dateCon + ") as h23"
+                    + ";";
 
-            setChartData(row, 0, 24);
+            ResultSet r = con.createStatement().executeQuery(SQL);
+            if (r.next()) {
+                ArrayList row = new ArrayList();
+                row.add(r.getString("h0"));
+                row.add(r.getString("h1"));
+                row.add(r.getString("h2"));
+                row.add(r.getString("h3"));
+                row.add(r.getString("h4"));
+                row.add(r.getString("h5"));
+                row.add(r.getString("h6"));
+                row.add(r.getString("h7"));
+                row.add(r.getString("h8"));
+                row.add(r.getString("h9"));
+                row.add(r.getString("h10"));
+                row.add(r.getString("h11"));
+                row.add(r.getString("h12"));
+                row.add(r.getString("h13"));
+                row.add(r.getString("h14"));
+                row.add(r.getString("h15"));
+                row.add(r.getString("h16"));
+                row.add(r.getString("h17"));
+                row.add(r.getString("h18"));
+                row.add(r.getString("h19"));
+                row.add(r.getString("h20"));
+                row.add(r.getString("h21"));
+                row.add(r.getString("h22"));
+                row.add(r.getString("h23"));
+
+                setChartData(row, 0, 24);
+            }
+
+            //filling chart lable
+            setChartLables(getNdtChartCols(), 1, getNdtChartCols().length);
+
+            con.close();
+        } catch (Exception e) {
+            logger.error(e.getMessage());
         }
-
-        //filling chart lable
-        setChartLables(getNdtChartCols(), 1, getNdtChartCols().length);
-
-        con.closeConnection();
     }
 
-    public List<ArrayList<String>> generateNdtTable(HttpServletRequest request, String d1, String d2, String db) throws SQLException, IOException, ClassNotFoundException, FileNotFoundException, ParserConfigurationException, SAXException, Exception {
+    public List<ArrayList<String>> generateNdtTable(HttpServletRequest request, String d1, String d2, String db) {
         this.date1 = (d1 == null) ? format.format(new Date()) : d1;
         this.date2 = (d2 == null) ? format.format(new Date()) : d2;
         this.DB = db;
         this.table.clear();
-        CfgHandler cfg = new CfgHandler(request);
-        String dateCon = " and to_date(to_char(t2.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') and t2.biz_type_id=b.id ";
 
-        String SQL = "Select "
-                + "b.name ,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('00:00:00','HH24:MI:SS')::time and to_timestamp('00:59:59','HH24:MI:SS')::time " + dateCon + ") as h0,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('01:00:00','HH24:MI:SS')::time and to_timestamp('01:59:59','HH24:MI:SS')::time " + dateCon + ") as h1,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('02:00:00','HH24:MI:SS')::time and to_timestamp('02:59:59','HH24:MI:SS')::time " + dateCon + ") as h2,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('03:00:00','HH24:MI:SS')::time and to_timestamp('03:59:59','HH24:MI:SS')::time " + dateCon + ") as h3,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('04:00:00','HH24:MI:SS')::time and to_timestamp('04:59:59','HH24:MI:SS')::time " + dateCon + ") as h4,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('05:00:00','HH24:MI:SS')::time and to_timestamp('05:59:59','HH24:MI:SS')::time " + dateCon + ") as h5,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('06:00:00','HH24:MI:SS')::time and to_timestamp('06:59:59','HH24:MI:SS')::time " + dateCon + ") as h6,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('07:00:00','HH24:MI:SS')::time and to_timestamp('07:59:59','HH24:MI:SS')::time " + dateCon + ") as h7,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('08:00:00','HH24:MI:SS')::time and to_timestamp('08:59:59','HH24:MI:SS')::time " + dateCon + ") as h8,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('09:00:00','HH24:MI:SS')::time and to_timestamp('09:59:59','HH24:MI:SS')::time " + dateCon + ") as h9,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('10:00:00','HH24:MI:SS')::time and to_timestamp('10:59:59','HH24:MI:SS')::time " + dateCon + ") as h10,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('11:00:00','HH24:MI:SS')::time and to_timestamp('11:59:59','HH24:MI:SS')::time " + dateCon + ") as h11,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('12:00:00','HH24:MI:SS')::time and to_timestamp('12:59:59','HH24:MI:SS')::time " + dateCon + ") as h12,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('13:00:00','HH24:MI:SS')::time and to_timestamp('13:59:59','HH24:MI:SS')::time " + dateCon + ") as h13,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('14:00:00','HH24:MI:SS')::time and to_timestamp('14:59:59','HH24:MI:SS')::time " + dateCon + ") as h14,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('15:00:00','HH24:MI:SS')::time and to_timestamp('15:59:59','HH24:MI:SS')::time " + dateCon + ") as h15,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('16:00:00','HH24:MI:SS')::time and to_timestamp('16:59:59','HH24:MI:SS')::time " + dateCon + ") as h16,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('17:00:00','HH24:MI:SS')::time and to_timestamp('17:59:59','HH24:MI:SS')::time " + dateCon + ") as h17,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('18:00:00','HH24:MI:SS')::time and to_timestamp('18:59:59','HH24:MI:SS')::time " + dateCon + ") as h18,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('19:00:00','HH24:MI:SS')::time and to_timestamp('19:59:59','HH24:MI:SS')::time " + dateCon + ") as h19,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('20:00:00','HH24:MI:SS')::time and to_timestamp('20:59:59','HH24:MI:SS')::time " + dateCon + ") as h20,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('21:00:00','HH24:MI:SS')::time and to_timestamp('21:59:59','HH24:MI:SS')::time " + dateCon + ") as h21,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('22:00:00','HH24:MI:SS')::time and to_timestamp('22:59:59','HH24:MI:SS')::time " + dateCon + ") as h22,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('23:00:00','HH24:MI:SS')::time and to_timestamp('23:59:59','HH24:MI:SS')::time " + dateCon + ") as h23"
-                + " from t_biz_type b;";
-        PgConnection con = new PgConnection();
-        ResultSet r = con.getStatement().executeQuery(SQL);
-        while (r.next()) {
-            ArrayList row = new ArrayList();
-            row.add(r.getString("name"));
-            row.add(r.getString("h0"));
-            row.add(r.getString("h1"));
-            row.add(r.getString("h2"));
-            row.add(r.getString("h3"));
-            row.add(r.getString("h4"));
-            row.add(r.getString("h5"));
-            row.add(r.getString("h6"));
-            row.add(r.getString("h7"));
-            row.add(r.getString("h8"));
-            row.add(r.getString("h9"));
-            row.add(r.getString("h10"));
-            row.add(r.getString("h11"));
-            row.add(r.getString("h12"));
-            row.add(r.getString("h13"));
-            row.add(r.getString("h14"));
-            row.add(r.getString("h15"));
-            row.add(r.getString("h16"));
-            row.add(r.getString("h17"));
-            row.add(r.getString("h18"));
-            row.add(r.getString("h19"));
-            row.add(r.getString("h20"));
-            row.add(r.getString("h21"));
-            row.add(r.getString("h22"));
-            row.add(r.getString("h23"));
-            this.table.add(row);
+        try (Connection con = new CPConnection().getConnection()) {
+            String dateCon = " and to_date(to_char(t2.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') and t2.biz_type_id=b.id ";
+
+            String SQL = "Select "
+                    + "b.name ,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('00:00:00','HH24:MI:SS')::time and to_timestamp('00:59:59','HH24:MI:SS')::time " + dateCon + ") as h0,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('01:00:00','HH24:MI:SS')::time and to_timestamp('01:59:59','HH24:MI:SS')::time " + dateCon + ") as h1,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('02:00:00','HH24:MI:SS')::time and to_timestamp('02:59:59','HH24:MI:SS')::time " + dateCon + ") as h2,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('03:00:00','HH24:MI:SS')::time and to_timestamp('03:59:59','HH24:MI:SS')::time " + dateCon + ") as h3,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('04:00:00','HH24:MI:SS')::time and to_timestamp('04:59:59','HH24:MI:SS')::time " + dateCon + ") as h4,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('05:00:00','HH24:MI:SS')::time and to_timestamp('05:59:59','HH24:MI:SS')::time " + dateCon + ") as h5,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('06:00:00','HH24:MI:SS')::time and to_timestamp('06:59:59','HH24:MI:SS')::time " + dateCon + ") as h6,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('07:00:00','HH24:MI:SS')::time and to_timestamp('07:59:59','HH24:MI:SS')::time " + dateCon + ") as h7,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('08:00:00','HH24:MI:SS')::time and to_timestamp('08:59:59','HH24:MI:SS')::time " + dateCon + ") as h8,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('09:00:00','HH24:MI:SS')::time and to_timestamp('09:59:59','HH24:MI:SS')::time " + dateCon + ") as h9,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('10:00:00','HH24:MI:SS')::time and to_timestamp('10:59:59','HH24:MI:SS')::time " + dateCon + ") as h10,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('11:00:00','HH24:MI:SS')::time and to_timestamp('11:59:59','HH24:MI:SS')::time " + dateCon + ") as h11,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('12:00:00','HH24:MI:SS')::time and to_timestamp('12:59:59','HH24:MI:SS')::time " + dateCon + ") as h12,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('13:00:00','HH24:MI:SS')::time and to_timestamp('13:59:59','HH24:MI:SS')::time " + dateCon + ") as h13,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('14:00:00','HH24:MI:SS')::time and to_timestamp('14:59:59','HH24:MI:SS')::time " + dateCon + ") as h14,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('15:00:00','HH24:MI:SS')::time and to_timestamp('15:59:59','HH24:MI:SS')::time " + dateCon + ") as h15,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('16:00:00','HH24:MI:SS')::time and to_timestamp('16:59:59','HH24:MI:SS')::time " + dateCon + ") as h16,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('17:00:00','HH24:MI:SS')::time and to_timestamp('17:59:59','HH24:MI:SS')::time " + dateCon + ") as h17,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('18:00:00','HH24:MI:SS')::time and to_timestamp('18:59:59','HH24:MI:SS')::time " + dateCon + ") as h18,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('19:00:00','HH24:MI:SS')::time and to_timestamp('19:59:59','HH24:MI:SS')::time " + dateCon + ") as h19,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('20:00:00','HH24:MI:SS')::time and to_timestamp('20:59:59','HH24:MI:SS')::time " + dateCon + ") as h20,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('21:00:00','HH24:MI:SS')::time and to_timestamp('21:59:59','HH24:MI:SS')::time " + dateCon + ") as h21,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('22:00:00','HH24:MI:SS')::time and to_timestamp('22:59:59','HH24:MI:SS')::time " + dateCon + ") as h22,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('23:00:00','HH24:MI:SS')::time and to_timestamp('23:59:59','HH24:MI:SS')::time " + dateCon + ") as h23"
+                    + " from t_biz_type b;";
+            ResultSet r = con.createStatement().executeQuery(SQL);
+            while (r.next()) {
+                ArrayList row = new ArrayList();
+                row.add(r.getString("name"));
+                row.add(r.getString("h0"));
+                row.add(r.getString("h1"));
+                row.add(r.getString("h2"));
+                row.add(r.getString("h3"));
+                row.add(r.getString("h4"));
+                row.add(r.getString("h5"));
+                row.add(r.getString("h6"));
+                row.add(r.getString("h7"));
+                row.add(r.getString("h8"));
+                row.add(r.getString("h9"));
+                row.add(r.getString("h10"));
+                row.add(r.getString("h11"));
+                row.add(r.getString("h12"));
+                row.add(r.getString("h13"));
+                row.add(r.getString("h14"));
+                row.add(r.getString("h15"));
+                row.add(r.getString("h16"));
+                row.add(r.getString("h17"));
+                row.add(r.getString("h18"));
+                row.add(r.getString("h19"));
+                row.add(r.getString("h20"));
+                row.add(r.getString("h21"));
+                row.add(r.getString("h22"));
+                row.add(r.getString("h23"));
+                this.table.add(row);
+            }
+
+            dateCon = " and to_date(to_char(t2.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') ";
+
+            SQL = "Select "
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('00:00:00','HH24:MI:SS')::time and to_timestamp('00:59:59','HH24:MI:SS')::time " + dateCon + ") as h0,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('01:00:00','HH24:MI:SS')::time and to_timestamp('01:59:59','HH24:MI:SS')::time " + dateCon + ") as h1,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('02:00:00','HH24:MI:SS')::time and to_timestamp('02:59:59','HH24:MI:SS')::time " + dateCon + ") as h2,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('03:00:00','HH24:MI:SS')::time and to_timestamp('03:59:59','HH24:MI:SS')::time " + dateCon + ") as h3,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('04:00:00','HH24:MI:SS')::time and to_timestamp('04:59:59','HH24:MI:SS')::time " + dateCon + ") as h4,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('05:00:00','HH24:MI:SS')::time and to_timestamp('05:59:59','HH24:MI:SS')::time " + dateCon + ") as h5,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('06:00:00','HH24:MI:SS')::time and to_timestamp('06:59:59','HH24:MI:SS')::time " + dateCon + ") as h6,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('07:00:00','HH24:MI:SS')::time and to_timestamp('07:59:59','HH24:MI:SS')::time " + dateCon + ") as h7,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('08:00:00','HH24:MI:SS')::time and to_timestamp('08:59:59','HH24:MI:SS')::time " + dateCon + ") as h8,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('09:00:00','HH24:MI:SS')::time and to_timestamp('09:59:59','HH24:MI:SS')::time " + dateCon + ") as h9,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('10:00:00','HH24:MI:SS')::time and to_timestamp('10:59:59','HH24:MI:SS')::time " + dateCon + ") as h10,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('11:00:00','HH24:MI:SS')::time and to_timestamp('11:59:59','HH24:MI:SS')::time " + dateCon + ") as h11,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('12:00:00','HH24:MI:SS')::time and to_timestamp('12:59:59','HH24:MI:SS')::time " + dateCon + ") as h12,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('13:00:00','HH24:MI:SS')::time and to_timestamp('13:59:59','HH24:MI:SS')::time " + dateCon + ") as h13,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('14:00:00','HH24:MI:SS')::time and to_timestamp('14:59:59','HH24:MI:SS')::time " + dateCon + ") as h14,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('15:00:00','HH24:MI:SS')::time and to_timestamp('15:59:59','HH24:MI:SS')::time " + dateCon + ") as h15,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('16:00:00','HH24:MI:SS')::time and to_timestamp('16:59:59','HH24:MI:SS')::time " + dateCon + ") as h16,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('17:00:00','HH24:MI:SS')::time and to_timestamp('17:59:59','HH24:MI:SS')::time " + dateCon + ") as h17,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('18:00:00','HH24:MI:SS')::time and to_timestamp('18:59:59','HH24:MI:SS')::time " + dateCon + ") as h18,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('19:00:00','HH24:MI:SS')::time and to_timestamp('19:59:59','HH24:MI:SS')::time " + dateCon + ") as h19,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('20:00:00','HH24:MI:SS')::time and to_timestamp('20:59:59','HH24:MI:SS')::time " + dateCon + ") as h20,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('21:00:00','HH24:MI:SS')::time and to_timestamp('21:59:59','HH24:MI:SS')::time " + dateCon + ") as h21,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('22:00:00','HH24:MI:SS')::time and to_timestamp('22:59:59','HH24:MI:SS')::time " + dateCon + ") as h22,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('23:00:00','HH24:MI:SS')::time and to_timestamp('23:59:59','HH24:MI:SS')::time " + dateCon + ") as h23"
+                    + ";";
+            r = con.createStatement().executeQuery(SQL);
+            if (r.next()) {
+                ArrayList row = new ArrayList();
+                row.add("Totale");
+                row.add(r.getString("h0"));
+                row.add(r.getString("h1"));
+                row.add(r.getString("h2"));
+                row.add(r.getString("h3"));
+                row.add(r.getString("h4"));
+                row.add(r.getString("h5"));
+                row.add(r.getString("h6"));
+                row.add(r.getString("h7"));
+                row.add(r.getString("h8"));
+                row.add(r.getString("h9"));
+                row.add(r.getString("h10"));
+                row.add(r.getString("h11"));
+                row.add(r.getString("h12"));
+                row.add(r.getString("h13"));
+                row.add(r.getString("h14"));
+                row.add(r.getString("h15"));
+                row.add(r.getString("h16"));
+                row.add(r.getString("h17"));
+                row.add(r.getString("h18"));
+                row.add(r.getString("h19"));
+                row.add(r.getString("h20"));
+                row.add(r.getString("h21"));
+                row.add(r.getString("h22"));
+                row.add(r.getString("h23"));
+                this.table.add(row);
+            }
+
+            con.close();
+        } catch (Exception e) {
+            logger.error(e.getMessage());
         }
-
-        dateCon = " and to_date(to_char(t2.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') ";
-
-        SQL = "Select "
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('00:00:00','HH24:MI:SS')::time and to_timestamp('00:59:59','HH24:MI:SS')::time " + dateCon + ") as h0,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('01:00:00','HH24:MI:SS')::time and to_timestamp('01:59:59','HH24:MI:SS')::time " + dateCon + ") as h1,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('02:00:00','HH24:MI:SS')::time and to_timestamp('02:59:59','HH24:MI:SS')::time " + dateCon + ") as h2,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('03:00:00','HH24:MI:SS')::time and to_timestamp('03:59:59','HH24:MI:SS')::time " + dateCon + ") as h3,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('04:00:00','HH24:MI:SS')::time and to_timestamp('04:59:59','HH24:MI:SS')::time " + dateCon + ") as h4,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('05:00:00','HH24:MI:SS')::time and to_timestamp('05:59:59','HH24:MI:SS')::time " + dateCon + ") as h5,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('06:00:00','HH24:MI:SS')::time and to_timestamp('06:59:59','HH24:MI:SS')::time " + dateCon + ") as h6,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('07:00:00','HH24:MI:SS')::time and to_timestamp('07:59:59','HH24:MI:SS')::time " + dateCon + ") as h7,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('08:00:00','HH24:MI:SS')::time and to_timestamp('08:59:59','HH24:MI:SS')::time " + dateCon + ") as h8,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('09:00:00','HH24:MI:SS')::time and to_timestamp('09:59:59','HH24:MI:SS')::time " + dateCon + ") as h9,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('10:00:00','HH24:MI:SS')::time and to_timestamp('10:59:59','HH24:MI:SS')::time " + dateCon + ") as h10,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('11:00:00','HH24:MI:SS')::time and to_timestamp('11:59:59','HH24:MI:SS')::time " + dateCon + ") as h11,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('12:00:00','HH24:MI:SS')::time and to_timestamp('12:59:59','HH24:MI:SS')::time " + dateCon + ") as h12,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('13:00:00','HH24:MI:SS')::time and to_timestamp('13:59:59','HH24:MI:SS')::time " + dateCon + ") as h13,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('14:00:00','HH24:MI:SS')::time and to_timestamp('14:59:59','HH24:MI:SS')::time " + dateCon + ") as h14,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('15:00:00','HH24:MI:SS')::time and to_timestamp('15:59:59','HH24:MI:SS')::time " + dateCon + ") as h15,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('16:00:00','HH24:MI:SS')::time and to_timestamp('16:59:59','HH24:MI:SS')::time " + dateCon + ") as h16,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('17:00:00','HH24:MI:SS')::time and to_timestamp('17:59:59','HH24:MI:SS')::time " + dateCon + ") as h17,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('18:00:00','HH24:MI:SS')::time and to_timestamp('18:59:59','HH24:MI:SS')::time " + dateCon + ") as h18,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('19:00:00','HH24:MI:SS')::time and to_timestamp('19:59:59','HH24:MI:SS')::time " + dateCon + ") as h19,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('20:00:00','HH24:MI:SS')::time and to_timestamp('20:59:59','HH24:MI:SS')::time " + dateCon + ") as h20,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('21:00:00','HH24:MI:SS')::time and to_timestamp('21:59:59','HH24:MI:SS')::time " + dateCon + ") as h21,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('22:00:00','HH24:MI:SS')::time and to_timestamp('22:59:59','HH24:MI:SS')::time " + dateCon + ") as h22,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('23:00:00','HH24:MI:SS')::time and to_timestamp('23:59:59','HH24:MI:SS')::time " + dateCon + ") as h23"
-                + ";";
-        r = con.getStatement().executeQuery(SQL);
-        if (r.next()) {
-            ArrayList row = new ArrayList();
-            row.add("Totale");
-            row.add(r.getString("h0"));
-            row.add(r.getString("h1"));
-            row.add(r.getString("h2"));
-            row.add(r.getString("h3"));
-            row.add(r.getString("h4"));
-            row.add(r.getString("h5"));
-            row.add(r.getString("h6"));
-            row.add(r.getString("h7"));
-            row.add(r.getString("h8"));
-            row.add(r.getString("h9"));
-            row.add(r.getString("h10"));
-            row.add(r.getString("h11"));
-            row.add(r.getString("h12"));
-            row.add(r.getString("h13"));
-            row.add(r.getString("h14"));
-            row.add(r.getString("h15"));
-            row.add(r.getString("h16"));
-            row.add(r.getString("h17"));
-            row.add(r.getString("h18"));
-            row.add(r.getString("h19"));
-            row.add(r.getString("h20"));
-            row.add(r.getString("h21"));
-            row.add(r.getString("h22"));
-            row.add(r.getString("h23"));
-            this.table.add(row);
-        }
-
-        con.closeConnection();
         return this.table;
     }
 
-    public List<ArrayList<String>> generateCnxTable(HttpServletRequest request, String d1, String d2, String db) throws SQLException, IOException, ClassNotFoundException, FileNotFoundException, ParserConfigurationException, SAXException, Exception {
+    public List<ArrayList<String>> generateCnxTable(HttpServletRequest request, String d1, String d2, String db) {
         this.date1 = (d1 == null) ? format.format(new Date()) : d1;
         this.date2 = (d2 == null) ? format.format(new Date()) : d2;
         this.DB = db;
         this.table.clear();
-        CfgHandler cfg = new CfgHandler(request);
-        String dateCon = " and to_date(to_char(t2.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') ";
+        try (Connection con = new CPConnection().getConnection()) {
+            String dateCon = " and to_date(to_char(t2.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') ";
 
-        String SQL = "select  "
-                + "l1.user_id, "
-                + "to_char(l1.login_time,'YYYY-MM-DD HH24:MI:SS') as cnx, "
-                + "to_char(l2.login_time,'YYYY-MM-DD HH24:MI:SS') as dcnx, "
-                + "DATE_PART('epoch'::text, l2.login_time - l1.login_time)::numeric as dure, "
-                + "l1.login_ip "
-                + "from t_login_log l1 "
-                + "left join t_login_log l2 on to_date(to_char(l1.login_time,'YYYY-MM-DD'),'YYYY-MM-DD') = to_date(to_char(l2.login_time,'YYYY-MM-DD'),'YYYY-MM-DD') and l1.user_id=l2.user_id and l2.login_time > l1.login_time  "
-                + "where  "
-                + "l1.successed=1  "
-                + "and l2.successed=1  "
-                + "and l1.login_type='in'  "
-                + "and l2.login_type='out'  "
-                + "and to_date(to_char(l1.login_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD')"
-                + "and to_date(to_char(l2.login_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD')"
-                + "order by l1.user_id,cnx  "
-                + ";";
-        PgConnection con = new PgConnection();
-        ResultSet r = con.getStatement().executeQuery(SQL);
-        float sum = 0;
-        while (r.next()) {
+            String SQL = "select  "
+                    + "l1.user_id, "
+                    + "to_char(l1.login_time,'YYYY-MM-DD HH24:MI:SS') as cnx, "
+                    + "to_char(l2.login_time,'YYYY-MM-DD HH24:MI:SS') as dcnx, "
+                    + "DATE_PART('epoch'::text, l2.login_time - l1.login_time)::numeric as dure, "
+                    + "l1.login_ip "
+                    + "from t_login_log l1 "
+                    + "left join t_login_log l2 on to_date(to_char(l1.login_time,'YYYY-MM-DD'),'YYYY-MM-DD') = to_date(to_char(l2.login_time,'YYYY-MM-DD'),'YYYY-MM-DD') and l1.user_id=l2.user_id and l2.login_time > l1.login_time  "
+                    + "where  "
+                    + "l1.successed=1  "
+                    + "and l2.successed=1  "
+                    + "and l1.login_type='in'  "
+                    + "and l2.login_type='out'  "
+                    + "and to_date(to_char(l1.login_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD')"
+                    + "and to_date(to_char(l2.login_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD')"
+                    + "order by l1.user_id,cnx  "
+                    + ";";
+
+            ResultSet r = con.createStatement().executeQuery(SQL);
+            float sum = 0;
+            while (r.next()) {
+                ArrayList row = new ArrayList();
+                row.add(r.getString("user_id"));
+                row.add(r.getString("cnx"));
+                row.add(r.getString("dcnx"));
+                float d = r.getFloat("dure");
+                sum += d;
+                row.add(getFormatedTime(d));
+                row.add(r.getString("login_ip"));
+                this.table.add(row);
+            }
             ArrayList row = new ArrayList();
-            row.add(r.getString("user_id"));
-            row.add(r.getString("cnx"));
-            row.add(r.getString("dcnx"));
-            float d = r.getFloat("dure");
-            sum += d;
-            row.add(getFormatedTime(d));
-            row.add(r.getString("login_ip"));
+            row.add("------");
+            row.add("------");
+            row.add("-------");
+            row.add(getFormatedTime(sum));
+            row.add("--------");
             this.table.add(row);
+            con.close();
+        } catch (Exception e) {
+            logger.error(e.getMessage());
         }
-        ArrayList row = new ArrayList();
-        row.add("------");
-        row.add("------");
-        row.add("-------");
-        row.add(getFormatedTime(sum));
-        row.add("--------");
-        this.table.add(row);
-        con.closeConnection();
         return this.table;
     }
 
-    public List<ArrayList<String>> generateSerTable(HttpServletRequest request, String d1, String d2, String db) throws SQLException, IOException, ClassNotFoundException, FileNotFoundException, ParserConfigurationException, SAXException, Exception {
+    public List<ArrayList<String>> generateSerTable(HttpServletRequest request, String d1, String d2, String db)  {
         this.date1 = (d1 == null) ? format.format(new Date()) : d1;
         this.date2 = (d2 == null) ? format.format(new Date()) : d2;
         this.DB = db;
         this.table.clear();
-        String dateCon = " and to_date(to_char(t.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') ";
-        String SQL = "select "
-                + "b.id, "
-                + "b.biz_prefix, "
-                + "b.name, "
-                + "b.deal_time_warning,"
-                + "b.status, "
-                + "b.comments, "
-                + "b.start_num, "
-                + "b.call_delay, "
-                + "b.biz_code, "
-                + "b.sort, "
-                + "(select count(*) from t_ticket t where t.biz_type_id=b.id and t.status=0 " + dateCon + ") as nb_tea, "
-                + "(select max(DATE_PART('epoch'::text, t.CALL_TIME - t.TICKET_TIME)::numeric) from t_ticket t where t.biz_type_id=b.id and t.call_time is not null " + dateCon + ") as maxA, "
-                + "(select avg(DATE_PART('epoch'::text, t.CALL_TIME - t.TICKET_TIME)::numeric) from t_ticket t where t.biz_type_id=b.id and t.call_time is not null " + dateCon + ") as avgA, "
-                + "(select count(*) from t_ticket t where t.biz_type_id=b.id and t.status=3 " + dateCon + ") as nb_tet, "
-                + "(select avg(DATE_PART('epoch'::text, t.finish_time - t.start_time)::numeric) from t_ticket t where t.biz_type_id=b.id " + dateCon + ") as avgt "
-                + "from t_biz_type b "
-                + ";";
-        PgConnection con = new PgConnection();
-        ResultSet r = con.getStatement().executeQuery(SQL);
-        while (r.next()) {
-            ArrayList row = new ArrayList();
-            row.add(r.getString("biz_prefix"));
-            row.add(r.getString("name"));
-            row.add(r.getLong("nb_tea") + "");
-            row.add(getFormatedTime(r.getFloat("maxa")));
-            row.add(getFormatedTime(r.getFloat("avga")));
-            row.add(r.getLong("nb_tet") + "");
-            row.add(getFormatedTime(r.getFloat("avgt")));
-            String stat = "";
-            switch (r.getString("status")) {
-                case "1":
-                    stat = "<span class='text-center text-white bg-success p-1'>NORMAL</span>";
-                    break;
-                case "0":
-                    stat = "<span class='text-center text-white bg-danger p-1'>PAUSE</span>";
-                    break;
-            }
-            row.add(stat);
-            row.add(r.getString("biz_code"));
-            row.add(r.getString("start_num"));
-            row.add(r.getString("comments"));
-            row.add(r.getString("call_delay"));
-            row.add(r.getString("deal_time_warning"));
-            row.add(r.getString("sort"));
-            this.table.add(row);
-        }
-        String subSQL = "select "
-                + "(select count(*) from t_ticket t where t.status=0 " + dateCon + " ) as nb_tea, "
-                + "(select max(DATE_PART('epoch'::text, t.CALL_TIME - t.TICKET_TIME)::numeric) from t_ticket t where t.call_time is not null " + dateCon + " ) as maxA, "
-                + "(select avg(DATE_PART('epoch'::text, t.CALL_TIME - t.TICKET_TIME)::numeric) from t_ticket t where t.call_time is not null " + dateCon + " ) as avgA, "
-                + "(select count(*) from t_ticket t where t.status=3  " + dateCon + ") as nb_tet, "
-                + "(select avg(DATE_PART('epoch'::text, t.finish_time - t.start_time)::numeric) from t_ticket t  where 1=1 " + dateCon + ") as avgt "
-                + ";";
-        r = con.getStatement().executeQuery(subSQL);
-        while (r.next()) {
-            ArrayList row = new ArrayList();
-            row.add("-----");
-            row.add("-----");
-            row.add(r.getLong("nb_tea") + "");
-            row.add(getFormatedTime(r.getFloat("maxa")));
-            row.add(getFormatedTime(r.getFloat("avga")));
-            row.add(r.getLong("nb_tet") + "");
-            row.add(getFormatedTime(r.getFloat("avgt")));
-            row.add("-----");
-            row.add("-----");
-            row.add("-----");
-            row.add("-----");
-            row.add("-----");
-            row.add("-----");
-            row.add("-----");
-            this.table.add(row);
-        }
+        try (Connection con = new CPConnection().getConnection()) {
+            String dateCon = " and to_date(to_char(t.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') ";
+            String SQL = "select "
+                    + "b.id, "
+                    + "b.biz_prefix, "
+                    + "b.name, "
+                    + "b.deal_time_warning,"
+                    + "b.status, "
+                    + "b.comments, "
+                    + "b.start_num, "
+                    + "b.call_delay, "
+                    + "b.biz_code, "
+                    + "b.sort, "
+                    + "(select count(*) from t_ticket t where t.biz_type_id=b.id and t.status=0 " + dateCon + ") as nb_tea, "
+                    + "(select max(DATE_PART('epoch'::text, t.CALL_TIME - t.TICKET_TIME)::numeric) from t_ticket t where t.biz_type_id=b.id and t.call_time is not null " + dateCon + ") as maxA, "
+                    + "(select avg(DATE_PART('epoch'::text, t.CALL_TIME - t.TICKET_TIME)::numeric) from t_ticket t where t.biz_type_id=b.id and t.call_time is not null " + dateCon + ") as avgA, "
+                    + "(select count(*) from t_ticket t where t.biz_type_id=b.id and t.status=3 " + dateCon + ") as nb_tet, "
+                    + "(select avg(DATE_PART('epoch'::text, t.finish_time - t.start_time)::numeric) from t_ticket t where t.biz_type_id=b.id " + dateCon + ") as avgt "
+                    + "from t_biz_type b "
+                    + ";";
 
-        con.closeConnection();
+            ResultSet r = con.createStatement().executeQuery(SQL);
+            while (r.next()) {
+                ArrayList row = new ArrayList();
+                row.add(r.getString("biz_prefix"));
+                row.add(r.getString("name"));
+                row.add(r.getLong("nb_tea") + "");
+                row.add(getFormatedTime(r.getFloat("maxa")));
+                row.add(getFormatedTime(r.getFloat("avga")));
+                row.add(r.getLong("nb_tet") + "");
+                row.add(getFormatedTime(r.getFloat("avgt")));
+                String stat = "";
+                switch (r.getString("status")) {
+                    case "1":
+                        stat = "<span class='text-center text-white bg-success p-1'>NORMAL</span>";
+                        break;
+                    case "0":
+                        stat = "<span class='text-center text-white bg-danger p-1'>PAUSE</span>";
+                        break;
+                }
+                row.add(stat);
+                row.add(r.getString("biz_code"));
+                row.add(r.getString("start_num"));
+                row.add(r.getString("comments"));
+                row.add(r.getString("call_delay"));
+                row.add(r.getString("deal_time_warning"));
+                row.add(r.getString("sort"));
+                this.table.add(row);
+            }
+            String subSQL = "select "
+                    + "(select count(*) from t_ticket t where t.status=0 " + dateCon + " ) as nb_tea, "
+                    + "(select max(DATE_PART('epoch'::text, t.CALL_TIME - t.TICKET_TIME)::numeric) from t_ticket t where t.call_time is not null " + dateCon + " ) as maxA, "
+                    + "(select avg(DATE_PART('epoch'::text, t.CALL_TIME - t.TICKET_TIME)::numeric) from t_ticket t where t.call_time is not null " + dateCon + " ) as avgA, "
+                    + "(select count(*) from t_ticket t where t.status=3  " + dateCon + ") as nb_tet, "
+                    + "(select avg(DATE_PART('epoch'::text, t.finish_time - t.start_time)::numeric) from t_ticket t  where 1=1 " + dateCon + ") as avgt "
+                    + ";";
+            r = con.createStatement().executeQuery(subSQL);
+            while (r.next()) {
+                ArrayList row = new ArrayList();
+                row.add("-----");
+                row.add("-----");
+                row.add(r.getLong("nb_tea") + "");
+                row.add(getFormatedTime(r.getFloat("maxa")));
+                row.add(getFormatedTime(r.getFloat("avga")));
+                row.add(r.getLong("nb_tet") + "");
+                row.add(getFormatedTime(r.getFloat("avgt")));
+                row.add("-----");
+                row.add("-----");
+                row.add("-----");
+                row.add("-----");
+                row.add("-----");
+                row.add("-----");
+                row.add("-----");
+                this.table.add(row);
+            }
+
+            con.close();
+        } catch (Exception e) {
+            logger.error(e.getMessage());
+        }
         return this.table;
     }
 
-    public List<ArrayList<String>> generateSgchTable(HttpServletRequest request, String d1, String d2, String db) throws SQLException, IOException, ClassNotFoundException, FileNotFoundException, ParserConfigurationException, SAXException, Exception {
+    public List<ArrayList<String>> generateSgchTable(HttpServletRequest request, String d1, String d2, String db) {
         this.date1 = (d1 == null) ? format.format(new Date()) : d1;
         this.date2 = (d2 == null) ? format.format(new Date()) : d2;
         this.DB = db;
         this.table.clear();
-        String SQL = "SELECT w.name ,"
-                + "w.win_number, "
-                + "u.name as username, "
-                + "ws.status, "
-                + "ws.access_time, "
-                + "ws.pause_time, "
-                + "ws.current_ticket ,"
-                + "(select t.ticket_id from t_ticket t where t.id= ws.current_ticket ) as ticket_id"
-                + " "
-                + "FROM t_window_status ws , t_window w, t_user u  "
-                + "where ws.window_id=w.id and ws.user_id=u.id  "
-                + ";";
-        PgConnection con = new PgConnection();
-        ResultSet r = con.getStatement().executeQuery(SQL);
-        while (r.next()) {
-            ArrayList row = new ArrayList();
-            row.add(r.getString("win_number"));
-            row.add(r.getString("name"));
-            row.add(r.getString("username"));
-            String stat = "";
-            switch (r.getString("status")) {
-                case "1":
-                    stat = "<span class='text-center text-white bg-success p-1'>ONLINE</span>";
-                    break;
-                case "2":
-                    stat = "<span class='text-center text-white bg-danger p-1'>HORS SERVICE</span>";
-                    break;
-                case "3":
-                    stat = "<span class='text-center text-white bg-secondary p-1'>OFFLINE</span>";
-                    break;
+        try (Connection con = new CPConnection().getConnection()) {
+            String SQL = "SELECT w.name ,"
+                    + "w.win_number, "
+                    + "u.name as username, "
+                    + "ws.status, "
+                    + "ws.access_time, "
+                    + "ws.pause_time, "
+                    + "ws.current_ticket ,"
+                    + "(select t.ticket_id from t_ticket t where t.id= ws.current_ticket ) as ticket_id"
+                    + " "
+                    + "FROM t_window_status ws , t_window w, t_user u  "
+                    + "where ws.window_id=w.id and ws.user_id=u.id  "
+                    + ";";
+
+            ResultSet r = con.createStatement().executeQuery(SQL);
+            while (r.next()) {
+                ArrayList row = new ArrayList();
+                row.add(r.getString("win_number"));
+                row.add(r.getString("name"));
+                row.add(r.getString("username"));
+                String stat = "";
+                switch (r.getString("status")) {
+                    case "1":
+                        stat = "<span class='text-center text-white bg-success p-1'>ONLINE</span>";
+                        break;
+                    case "2":
+                        stat = "<span class='text-center text-white bg-danger p-1'>HORS SERVICE</span>";
+                        break;
+                    case "3":
+                        stat = "<span class='text-center text-white bg-secondary p-1'>OFFLINE</span>";
+                        break;
+                }
+
+                row.add(stat);
+                row.add(r.getString("access_time"));
+                row.add(r.getString("pause_time"));
+                row.add(r.getString("ticket_id"));
+                this.table.add(row);
             }
 
-            row.add(stat);
-            row.add(r.getString("access_time"));
-            row.add(r.getString("pause_time"));
-            row.add(r.getString("ticket_id"));
-            this.table.add(row);
+            con.close();
+        } catch (Exception e) {
+            logger.error(e.getMessage());
         }
-
-        con.closeConnection();
         return this.table;
     }
 
-    public List<ArrayList<String>> generateAplTable(HttpServletRequest request, String d1, String d2, String db) throws SQLException, IOException, ClassNotFoundException, FileNotFoundException, ParserConfigurationException, SAXException, Exception {
+    public List<ArrayList<String>> generateAplTable(HttpServletRequest request, String d1, String d2, String db)  {
         this.date1 = (d1 == null) ? format.format(new Date()) : d1;
         this.date2 = (d2 == null) ? format.format(new Date()) : d2;
         this.DB = db;
         this.table.clear();
-        String SQL = "SELECT  "
-                + "b.name as service, "
-                + "t.ticket_id, "
-                + "to_char(t.ticket_time,'DD-MM-YYYY HH24:MI:SS') as ticket_time, "
-                + "to_char(t.call_time,'DD-MM-YYYY HH24:MI:SS') as call_time, "
-                + "to_char(t.start_time,'DD-MM-YYYY HH24:MI:SS') as start_time, "
-                + "to_char(t.finish_time,'DD-MM-YYYY HH24:MI:SS') as finish_time, "
-                + "w.name guichet, "
-                + "u.name username, "
-                + "DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric as da, "
-                + "DATE_PART('epoch'::text, t.finish_time - t.start_time)::numeric as dt, "
-                + "t.status "
-                + "from t_ticket t "
-                + "left join t_biz_type b on t.biz_type_id=b.id "
-                + "left join t_window w on t.deal_win=w.id "
-                + "left join t_user u on t.deal_user=u.id "
-                + "where to_date(to_char(t.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') and t.call_time is not null"
-                + ";";
-        PgConnection con = new PgConnection();
-        ResultSet r = con.getStatement().executeQuery(SQL);
-        while (r.next()) {
-            ArrayList row = new ArrayList();
-            row.add(r.getString("service"));
-            row.add(r.getString("ticket_id"));
-            row.add(r.getString("ticket_time"));
-            row.add(r.getString("call_time"));
-            row.add(r.getString("start_time"));
-            row.add(r.getString("finish_time"));
-            row.add(r.getString("guichet"));
-            row.add(r.getString("username"));
-            row.add(getFormatedTime(r.getFloat("da")));
-            row.add(getFormatedTime(r.getFloat("dt")));
-            String stat = "";
-            switch (r.getString("status")) {
-                case "0":
-                    stat = "<span class='text-center text-white bg-secondary p-1'>En Attente</span>";
-                    break;
-                case "1":
-                    stat = "<span class='text-center text-white bg-primary p-1'>En Appel</span>";
-                    break;
-                case "2":
-                    stat = "<span class='text-center text-white bg-warning text-dark p-1'>Absent</span>";
-                    break;
-                case "3":
-                    stat = "<span class='text-center text-white bg-info p-1'>En traitement</span>";
-                    break;
-                case "4":
-                    stat = "<span class='text-center text-white bg-success p-1'>Traité</span>";
-                    break;
-                case "5":
-                    stat = "<span class='text-center text-white bg-danger p-1'>Interrupt</span>";
-                    break;
-                case "6":
-                    stat = "<span class='text-center text-white bg-danger p-1'>Abnormal ticket</span>";
-                    break;
-                case "7":
-                    stat = "<span class='text-center text-white bg-danger p-1'>No sign of WeChat</span>";
-                    break;
-                case "8":
-                    stat = "<span class='text-center text-white bg-danger p-1'>Failure of verification</span>";
-                    break;
-            }
-            row.add(stat);
-            this.table.add(row);
-        }
+        try (Connection con = new CPConnection().getConnection()) {
+            String SQL = "SELECT  "
+                    + "b.name as service, "
+                    + "t.ticket_id, "
+                    + "to_char(t.ticket_time,'DD-MM-YYYY HH24:MI:SS') as ticket_time, "
+                    + "to_char(t.call_time,'DD-MM-YYYY HH24:MI:SS') as call_time, "
+                    + "to_char(t.start_time,'DD-MM-YYYY HH24:MI:SS') as start_time, "
+                    + "to_char(t.finish_time,'DD-MM-YYYY HH24:MI:SS') as finish_time, "
+                    + "w.name guichet, "
+                    + "u.name username, "
+                    + "DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric as da, "
+                    + "DATE_PART('epoch'::text, t.finish_time - t.start_time)::numeric as dt, "
+                    + "t.status "
+                    + "from t_ticket t "
+                    + "left join t_biz_type b on t.biz_type_id=b.id "
+                    + "left join t_window w on t.deal_win=w.id "
+                    + "left join t_user u on t.deal_user=u.id "
+                    + "where to_date(to_char(t.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') and t.call_time is not null"
+                    + ";";
 
-        con.closeConnection();
+            ResultSet r = con.createStatement().executeQuery(SQL);
+            while (r.next()) {
+                ArrayList row = new ArrayList();
+                row.add(r.getString("service"));
+                row.add(r.getString("ticket_id"));
+                row.add(r.getString("ticket_time"));
+                row.add(r.getString("call_time"));
+                row.add(r.getString("start_time"));
+                row.add(r.getString("finish_time"));
+                row.add(r.getString("guichet"));
+                row.add(r.getString("username"));
+                row.add(getFormatedTime(r.getFloat("da")));
+                row.add(getFormatedTime(r.getFloat("dt")));
+                String stat = "";
+                switch (r.getString("status")) {
+                    case "0":
+                        stat = "<span class='text-center text-white bg-secondary p-1'>En Attente</span>";
+                        break;
+                    case "1":
+                        stat = "<span class='text-center text-white bg-primary p-1'>En Appel</span>";
+                        break;
+                    case "2":
+                        stat = "<span class='text-center text-white bg-warning text-dark p-1'>Absent</span>";
+                        break;
+                    case "3":
+                        stat = "<span class='text-center text-white bg-info p-1'>En traitement</span>";
+                        break;
+                    case "4":
+                        stat = "<span class='text-center text-white bg-success p-1'>Traité</span>";
+                        break;
+                    case "5":
+                        stat = "<span class='text-center text-white bg-danger p-1'>Interrupt</span>";
+                        break;
+                    case "6":
+                        stat = "<span class='text-center text-white bg-danger p-1'>Abnormal ticket</span>";
+                        break;
+                    case "7":
+                        stat = "<span class='text-center text-white bg-danger p-1'>No sign of WeChat</span>";
+                        break;
+                    case "8":
+                        stat = "<span class='text-center text-white bg-danger p-1'>Failure of verification</span>";
+                        break;
+                }
+                row.add(stat);
+                this.table.add(row);
+            }
+
+            con.close();
+        } catch (Exception e) {
+            logger.error(e.getMessage());
+        }
         return this.table;
     }
 
-    public void generateNdttChart(HttpServletRequest request, String d1, String d2, String db) throws SQLException, IOException, ClassNotFoundException, FileNotFoundException, ParserConfigurationException, SAXException, Exception {
+    public void generateNdttChart(HttpServletRequest request, String d1, String d2, String db)  {
         this.date1 = (d1 == null) ? format.format(new Date()) : d1;
         this.date2 = (d2 == null) ? format.format(new Date()) : d2;
         this.DB = db;
-        String dateCon = " and to_date(to_char(t2.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') ";
+        try (Connection con = new CPConnection().getConnection()) {
+            String dateCon = " and to_date(to_char(t2.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') ";
 
-        String SQL = "Select "
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('00:00:00','HH24:MI:SS')::time and to_timestamp('00:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"0H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('01:00:00','HH24:MI:SS')::time and to_timestamp('01:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"1H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('02:00:00','HH24:MI:SS')::time and to_timestamp('02:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"2H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('03:00:00','HH24:MI:SS')::time and to_timestamp('03:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"3H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('04:00:00','HH24:MI:SS')::time and to_timestamp('04:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"4H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('05:00:00','HH24:MI:SS')::time and to_timestamp('05:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"5H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('06:00:00','HH24:MI:SS')::time and to_timestamp('06:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"6H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('07:00:00','HH24:MI:SS')::time and to_timestamp('07:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"7H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('08:00:00','HH24:MI:SS')::time and to_timestamp('08:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"8H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('09:00:00','HH24:MI:SS')::time and to_timestamp('09:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"9H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('10:00:00','HH24:MI:SS')::time and to_timestamp('10:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"10H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('11:00:00','HH24:MI:SS')::time and to_timestamp('11:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"11H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('12:00:00','HH24:MI:SS')::time and to_timestamp('12:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"12H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('13:00:00','HH24:MI:SS')::time and to_timestamp('13:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"13H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('14:00:00','HH24:MI:SS')::time and to_timestamp('14:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"14H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('15:00:00','HH24:MI:SS')::time and to_timestamp('15:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"15H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('16:00:00','HH24:MI:SS')::time and to_timestamp('16:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"16H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('17:00:00','HH24:MI:SS')::time and to_timestamp('17:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"17H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('18:00:00','HH24:MI:SS')::time and to_timestamp('18:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"18H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('19:00:00','HH24:MI:SS')::time and to_timestamp('19:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"19H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('20:00:00','HH24:MI:SS')::time and to_timestamp('20:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"20H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('21:00:00','HH24:MI:SS')::time and to_timestamp('21:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"21H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('22:00:00','HH24:MI:SS')::time and to_timestamp('22:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"22H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('23:00:00','HH24:MI:SS')::time and to_timestamp('23:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"23H\""
-                + ";";
-        PgConnection con = new PgConnection();
-        ResultSet r = con.getStatement().executeQuery(SQL);
-        if (r.next()) {
-            ArrayList row = new ArrayList();
-            for (int i = 1; i <= 24; i++) {
-                row.add(r.getString(i));
+            String SQL = "Select "
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('00:00:00','HH24:MI:SS')::time and to_timestamp('00:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"0H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('01:00:00','HH24:MI:SS')::time and to_timestamp('01:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"1H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('02:00:00','HH24:MI:SS')::time and to_timestamp('02:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"2H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('03:00:00','HH24:MI:SS')::time and to_timestamp('03:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"3H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('04:00:00','HH24:MI:SS')::time and to_timestamp('04:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"4H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('05:00:00','HH24:MI:SS')::time and to_timestamp('05:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"5H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('06:00:00','HH24:MI:SS')::time and to_timestamp('06:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"6H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('07:00:00','HH24:MI:SS')::time and to_timestamp('07:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"7H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('08:00:00','HH24:MI:SS')::time and to_timestamp('08:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"8H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('09:00:00','HH24:MI:SS')::time and to_timestamp('09:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"9H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('10:00:00','HH24:MI:SS')::time and to_timestamp('10:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"10H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('11:00:00','HH24:MI:SS')::time and to_timestamp('11:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"11H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('12:00:00','HH24:MI:SS')::time and to_timestamp('12:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"12H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('13:00:00','HH24:MI:SS')::time and to_timestamp('13:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"13H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('14:00:00','HH24:MI:SS')::time and to_timestamp('14:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"14H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('15:00:00','HH24:MI:SS')::time and to_timestamp('15:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"15H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('16:00:00','HH24:MI:SS')::time and to_timestamp('16:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"16H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('17:00:00','HH24:MI:SS')::time and to_timestamp('17:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"17H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('18:00:00','HH24:MI:SS')::time and to_timestamp('18:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"18H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('19:00:00','HH24:MI:SS')::time and to_timestamp('19:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"19H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('20:00:00','HH24:MI:SS')::time and to_timestamp('20:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"20H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('21:00:00','HH24:MI:SS')::time and to_timestamp('21:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"21H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('22:00:00','HH24:MI:SS')::time and to_timestamp('22:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"22H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('23:00:00','HH24:MI:SS')::time and to_timestamp('23:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"23H\""
+                    + ";";
+
+            ResultSet r = con.createStatement().executeQuery(SQL);
+            if (r.next()) {
+                ArrayList row = new ArrayList();
+                for (int i = 1; i <= 24; i++) {
+                    row.add(r.getString(i));
+                }
+                setChartData(row, 0, 24);
             }
-            setChartData(row, 0, 24);
+
+            //filling chart lable
+            setChartLables(getNdtChartCols(), 1, getNdtChartCols().length);
+
+            con.close();
+        } catch (Exception e) {
+            logger.error(e.getMessage());
         }
-
-        //filling chart lable
-        setChartLables(getNdtChartCols(), 1, getNdtChartCols().length);
-
-        con.closeConnection();
     }
 
-    public List<ArrayList<String>> generateNdttTable(HttpServletRequest request, String d1, String d2, String db) throws SQLException, IOException, ClassNotFoundException, FileNotFoundException, ParserConfigurationException, SAXException, Exception {
+    public List<ArrayList<String>> generateNdttTable(HttpServletRequest request, String d1, String d2, String db)  {
         this.date1 = (d1 == null) ? format.format(new Date()) : d1;
         this.date2 = (d2 == null) ? format.format(new Date()) : d2;
         this.DB = db;
         this.table.clear();
-        String dateCon = " and to_date(to_char(t2.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') and t2.biz_type_id=b.id  ";
+        try (Connection con = new CPConnection().getConnection()) {
+            String dateCon = " and to_date(to_char(t2.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') and t2.biz_type_id=b.id  ";
 
-        String SQL = "Select b.name,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('00:00:00','HH24:MI:SS')::time and to_timestamp('00:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"0H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('01:00:00','HH24:MI:SS')::time and to_timestamp('01:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"1H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('02:00:00','HH24:MI:SS')::time and to_timestamp('02:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"2H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('03:00:00','HH24:MI:SS')::time and to_timestamp('03:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"3H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('04:00:00','HH24:MI:SS')::time and to_timestamp('04:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"4H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('05:00:00','HH24:MI:SS')::time and to_timestamp('05:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"5H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('06:00:00','HH24:MI:SS')::time and to_timestamp('06:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"6H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('07:00:00','HH24:MI:SS')::time and to_timestamp('07:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"7H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('08:00:00','HH24:MI:SS')::time and to_timestamp('08:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"8H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('09:00:00','HH24:MI:SS')::time and to_timestamp('09:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"9H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('10:00:00','HH24:MI:SS')::time and to_timestamp('10:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"10H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('11:00:00','HH24:MI:SS')::time and to_timestamp('11:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"11H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('12:00:00','HH24:MI:SS')::time and to_timestamp('12:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"12H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('13:00:00','HH24:MI:SS')::time and to_timestamp('13:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"13H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('14:00:00','HH24:MI:SS')::time and to_timestamp('14:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"14H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('15:00:00','HH24:MI:SS')::time and to_timestamp('15:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"15H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('16:00:00','HH24:MI:SS')::time and to_timestamp('16:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"16H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('17:00:00','HH24:MI:SS')::time and to_timestamp('17:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"17H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('18:00:00','HH24:MI:SS')::time and to_timestamp('18:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"18H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('19:00:00','HH24:MI:SS')::time and to_timestamp('19:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"19H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('20:00:00','HH24:MI:SS')::time and to_timestamp('20:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"20H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('21:00:00','HH24:MI:SS')::time and to_timestamp('21:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"21H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('22:00:00','HH24:MI:SS')::time and to_timestamp('22:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"22H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('23:00:00','HH24:MI:SS')::time and to_timestamp('23:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"23H\""
-                + " from t_biz_type b;";
-        PgConnection con = new PgConnection();
-        ResultSet r = con.getStatement().executeQuery(SQL);
-        while (r.next()) {
-            ArrayList row = new ArrayList();
-            for (int i = 1; i <= 25; i++) {
-                row.add(r.getString(i));
+            String SQL = "Select b.name,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('00:00:00','HH24:MI:SS')::time and to_timestamp('00:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"0H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('01:00:00','HH24:MI:SS')::time and to_timestamp('01:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"1H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('02:00:00','HH24:MI:SS')::time and to_timestamp('02:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"2H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('03:00:00','HH24:MI:SS')::time and to_timestamp('03:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"3H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('04:00:00','HH24:MI:SS')::time and to_timestamp('04:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"4H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('05:00:00','HH24:MI:SS')::time and to_timestamp('05:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"5H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('06:00:00','HH24:MI:SS')::time and to_timestamp('06:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"6H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('07:00:00','HH24:MI:SS')::time and to_timestamp('07:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"7H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('08:00:00','HH24:MI:SS')::time and to_timestamp('08:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"8H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('09:00:00','HH24:MI:SS')::time and to_timestamp('09:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"9H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('10:00:00','HH24:MI:SS')::time and to_timestamp('10:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"10H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('11:00:00','HH24:MI:SS')::time and to_timestamp('11:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"11H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('12:00:00','HH24:MI:SS')::time and to_timestamp('12:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"12H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('13:00:00','HH24:MI:SS')::time and to_timestamp('13:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"13H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('14:00:00','HH24:MI:SS')::time and to_timestamp('14:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"14H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('15:00:00','HH24:MI:SS')::time and to_timestamp('15:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"15H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('16:00:00','HH24:MI:SS')::time and to_timestamp('16:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"16H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('17:00:00','HH24:MI:SS')::time and to_timestamp('17:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"17H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('18:00:00','HH24:MI:SS')::time and to_timestamp('18:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"18H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('19:00:00','HH24:MI:SS')::time and to_timestamp('19:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"19H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('20:00:00','HH24:MI:SS')::time and to_timestamp('20:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"20H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('21:00:00','HH24:MI:SS')::time and to_timestamp('21:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"21H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('22:00:00','HH24:MI:SS')::time and to_timestamp('22:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"22H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('23:00:00','HH24:MI:SS')::time and to_timestamp('23:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"23H\""
+                    + " from t_biz_type b;";
+
+            ResultSet r = con.createStatement().executeQuery(SQL);
+            while (r.next()) {
+                ArrayList row = new ArrayList();
+                for (int i = 1; i <= 25; i++) {
+                    row.add(r.getString(i));
+                }
+                this.table.add(row);
             }
-            this.table.add(row);
-        }
-        dateCon = " and to_date(to_char(t2.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') ";
+            dateCon = " and to_date(to_char(t2.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') ";
 
-        SQL = "Select "
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('00:00:00','HH24:MI:SS')::time and to_timestamp('00:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"0H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('01:00:00','HH24:MI:SS')::time and to_timestamp('01:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"1H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('02:00:00','HH24:MI:SS')::time and to_timestamp('02:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"2H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('03:00:00','HH24:MI:SS')::time and to_timestamp('03:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"3H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('04:00:00','HH24:MI:SS')::time and to_timestamp('04:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"4H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('05:00:00','HH24:MI:SS')::time and to_timestamp('05:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"5H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('06:00:00','HH24:MI:SS')::time and to_timestamp('06:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"6H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('07:00:00','HH24:MI:SS')::time and to_timestamp('07:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"7H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('08:00:00','HH24:MI:SS')::time and to_timestamp('08:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"8H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('09:00:00','HH24:MI:SS')::time and to_timestamp('09:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"9H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('10:00:00','HH24:MI:SS')::time and to_timestamp('10:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"10H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('11:00:00','HH24:MI:SS')::time and to_timestamp('11:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"11H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('12:00:00','HH24:MI:SS')::time and to_timestamp('12:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"12H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('13:00:00','HH24:MI:SS')::time and to_timestamp('13:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"13H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('14:00:00','HH24:MI:SS')::time and to_timestamp('14:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"14H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('15:00:00','HH24:MI:SS')::time and to_timestamp('15:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"15H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('16:00:00','HH24:MI:SS')::time and to_timestamp('16:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"16H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('17:00:00','HH24:MI:SS')::time and to_timestamp('17:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"17H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('18:00:00','HH24:MI:SS')::time and to_timestamp('18:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"18H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('19:00:00','HH24:MI:SS')::time and to_timestamp('19:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"19H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('20:00:00','HH24:MI:SS')::time and to_timestamp('20:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"20H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('21:00:00','HH24:MI:SS')::time and to_timestamp('21:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"21H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('22:00:00','HH24:MI:SS')::time and to_timestamp('22:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"22H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('23:00:00','HH24:MI:SS')::time and to_timestamp('23:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"23H\""
-                + ";";
-        r = con.getStatement().executeQuery(SQL);
-        if (r.next()) {
-            ArrayList row = new ArrayList();
-            row.add("Totale");
-            for (int i = 1; i <= 24; i++) {
-                row.add(r.getString(i));
+            SQL = "Select "
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('00:00:00','HH24:MI:SS')::time and to_timestamp('00:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"0H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('01:00:00','HH24:MI:SS')::time and to_timestamp('01:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"1H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('02:00:00','HH24:MI:SS')::time and to_timestamp('02:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"2H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('03:00:00','HH24:MI:SS')::time and to_timestamp('03:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"3H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('04:00:00','HH24:MI:SS')::time and to_timestamp('04:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"4H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('05:00:00','HH24:MI:SS')::time and to_timestamp('05:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"5H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('06:00:00','HH24:MI:SS')::time and to_timestamp('06:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"6H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('07:00:00','HH24:MI:SS')::time and to_timestamp('07:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"7H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('08:00:00','HH24:MI:SS')::time and to_timestamp('08:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"8H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('09:00:00','HH24:MI:SS')::time and to_timestamp('09:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"9H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('10:00:00','HH24:MI:SS')::time and to_timestamp('10:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"10H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('11:00:00','HH24:MI:SS')::time and to_timestamp('11:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"11H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('12:00:00','HH24:MI:SS')::time and to_timestamp('12:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"12H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('13:00:00','HH24:MI:SS')::time and to_timestamp('13:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"13H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('14:00:00','HH24:MI:SS')::time and to_timestamp('14:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"14H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('15:00:00','HH24:MI:SS')::time and to_timestamp('15:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"15H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('16:00:00','HH24:MI:SS')::time and to_timestamp('16:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"16H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('17:00:00','HH24:MI:SS')::time and to_timestamp('17:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"17H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('18:00:00','HH24:MI:SS')::time and to_timestamp('18:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"18H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('19:00:00','HH24:MI:SS')::time and to_timestamp('19:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"19H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('20:00:00','HH24:MI:SS')::time and to_timestamp('20:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"20H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('21:00:00','HH24:MI:SS')::time and to_timestamp('21:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"21H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('22:00:00','HH24:MI:SS')::time and to_timestamp('22:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"22H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('23:00:00','HH24:MI:SS')::time and to_timestamp('23:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=4) as \"23H\""
+                    + ";";
+            r = con.createStatement().executeQuery(SQL);
+            if (r.next()) {
+                ArrayList row = new ArrayList();
+                row.add("Totale");
+                for (int i = 1; i <= 24; i++) {
+                    row.add(r.getString(i));
+                }
+                this.table.add(row);
             }
-            this.table.add(row);
-        }
 
-        con.closeConnection();
+            con.close();
+        } catch (Exception e) {
+            logger.error(e.getMessage());
+        }
         return this.table;
     }
 
-    public void generateNdtaChart(HttpServletRequest request, String d1, String d2, String db) throws SQLException, IOException, ClassNotFoundException, FileNotFoundException, ParserConfigurationException, SAXException, Exception {
+    public void generateNdtaChart(HttpServletRequest request, String d1, String d2, String db)  {
         this.date1 = (d1 == null) ? format.format(new Date()) : d1;
         this.date2 = (d2 == null) ? format.format(new Date()) : d2;
         this.DB = db;
-        String dateCon = " and to_date(to_char(t2.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') ";
+        try (Connection con = new CPConnection().getConnection()) {
+            String dateCon = " and to_date(to_char(t2.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') ";
 
-        String SQL = "Select "
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('00:00:00','HH24:MI:SS')::time and to_timestamp('00:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"0H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('01:00:00','HH24:MI:SS')::time and to_timestamp('01:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"1H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('02:00:00','HH24:MI:SS')::time and to_timestamp('02:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"2H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('03:00:00','HH24:MI:SS')::time and to_timestamp('03:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"3H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('04:00:00','HH24:MI:SS')::time and to_timestamp('04:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"4H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('05:00:00','HH24:MI:SS')::time and to_timestamp('05:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"5H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('06:00:00','HH24:MI:SS')::time and to_timestamp('06:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"6H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('07:00:00','HH24:MI:SS')::time and to_timestamp('07:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"7H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('08:00:00','HH24:MI:SS')::time and to_timestamp('08:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"8H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('09:00:00','HH24:MI:SS')::time and to_timestamp('09:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"9H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('10:00:00','HH24:MI:SS')::time and to_timestamp('10:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"10H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('11:00:00','HH24:MI:SS')::time and to_timestamp('11:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"11H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('12:00:00','HH24:MI:SS')::time and to_timestamp('12:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"12H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('13:00:00','HH24:MI:SS')::time and to_timestamp('13:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"13H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('14:00:00','HH24:MI:SS')::time and to_timestamp('14:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"14H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('15:00:00','HH24:MI:SS')::time and to_timestamp('15:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"15H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('16:00:00','HH24:MI:SS')::time and to_timestamp('16:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"16H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('17:00:00','HH24:MI:SS')::time and to_timestamp('17:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"17H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('18:00:00','HH24:MI:SS')::time and to_timestamp('18:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"18H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('19:00:00','HH24:MI:SS')::time and to_timestamp('19:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"19H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('20:00:00','HH24:MI:SS')::time and to_timestamp('20:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"20H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('21:00:00','HH24:MI:SS')::time and to_timestamp('21:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"21H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('22:00:00','HH24:MI:SS')::time and to_timestamp('22:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"22H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('23:00:00','HH24:MI:SS')::time and to_timestamp('23:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"23H\""
-                + ";";
-        PgConnection con = new PgConnection();
-        ResultSet r = con.getStatement().executeQuery(SQL);
-        if (r.next()) {
-            ArrayList row = new ArrayList();
-            for (int i = 1; i <= 24; i++) {
-                row.add(r.getString(i));
+            String SQL = "Select "
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('00:00:00','HH24:MI:SS')::time and to_timestamp('00:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"0H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('01:00:00','HH24:MI:SS')::time and to_timestamp('01:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"1H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('02:00:00','HH24:MI:SS')::time and to_timestamp('02:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"2H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('03:00:00','HH24:MI:SS')::time and to_timestamp('03:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"3H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('04:00:00','HH24:MI:SS')::time and to_timestamp('04:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"4H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('05:00:00','HH24:MI:SS')::time and to_timestamp('05:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"5H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('06:00:00','HH24:MI:SS')::time and to_timestamp('06:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"6H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('07:00:00','HH24:MI:SS')::time and to_timestamp('07:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"7H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('08:00:00','HH24:MI:SS')::time and to_timestamp('08:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"8H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('09:00:00','HH24:MI:SS')::time and to_timestamp('09:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"9H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('10:00:00','HH24:MI:SS')::time and to_timestamp('10:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"10H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('11:00:00','HH24:MI:SS')::time and to_timestamp('11:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"11H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('12:00:00','HH24:MI:SS')::time and to_timestamp('12:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"12H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('13:00:00','HH24:MI:SS')::time and to_timestamp('13:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"13H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('14:00:00','HH24:MI:SS')::time and to_timestamp('14:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"14H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('15:00:00','HH24:MI:SS')::time and to_timestamp('15:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"15H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('16:00:00','HH24:MI:SS')::time and to_timestamp('16:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"16H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('17:00:00','HH24:MI:SS')::time and to_timestamp('17:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"17H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('18:00:00','HH24:MI:SS')::time and to_timestamp('18:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"18H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('19:00:00','HH24:MI:SS')::time and to_timestamp('19:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"19H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('20:00:00','HH24:MI:SS')::time and to_timestamp('20:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"20H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('21:00:00','HH24:MI:SS')::time and to_timestamp('21:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"21H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('22:00:00','HH24:MI:SS')::time and to_timestamp('22:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"22H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('23:00:00','HH24:MI:SS')::time and to_timestamp('23:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"23H\""
+                    + ";";
+
+            ResultSet r = con.createStatement().executeQuery(SQL);
+            if (r.next()) {
+                ArrayList row = new ArrayList();
+                for (int i = 1; i <= 24; i++) {
+                    row.add(r.getString(i));
+                }
+                setChartData(row, 0, 24);
             }
-            setChartData(row, 0, 24);
+
+            //filling chart lable
+            setChartLables(getNdtChartCols(), 1, getNdtChartCols().length);
+
+            con.close();
+        } catch (Exception e) {
+            logger.error(e.getMessage());
         }
-
-        //filling chart lable
-        setChartLables(getNdtChartCols(), 1, getNdtChartCols().length);
-
-        con.closeConnection();
     }
 
-    public List<ArrayList<String>> generateNdtaTable(HttpServletRequest request, String d1, String d2, String db) throws SQLException, IOException, ClassNotFoundException, FileNotFoundException, ParserConfigurationException, SAXException, Exception {
+    public List<ArrayList<String>> generateNdtaTable(HttpServletRequest request, String d1, String d2, String db) {
         this.date1 = (d1 == null) ? format.format(new Date()) : d1;
         this.date2 = (d2 == null) ? format.format(new Date()) : d2;
         this.DB = db;
         this.table.clear();
-        String dateCon = " and to_date(to_char(t2.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') and t2.biz_type_id=b.id ";
+        try (Connection con = new CPConnection().getConnection()) {
+            String dateCon = " and to_date(to_char(t2.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') and t2.biz_type_id=b.id ";
 
-        String SQL = "Select b.name,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('00:00:00','HH24:MI:SS')::time and to_timestamp('00:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"0H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('01:00:00','HH24:MI:SS')::time and to_timestamp('01:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"1H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('02:00:00','HH24:MI:SS')::time and to_timestamp('02:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"2H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('03:00:00','HH24:MI:SS')::time and to_timestamp('03:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"3H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('04:00:00','HH24:MI:SS')::time and to_timestamp('04:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"4H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('05:00:00','HH24:MI:SS')::time and to_timestamp('05:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"5H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('06:00:00','HH24:MI:SS')::time and to_timestamp('06:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"6H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('07:00:00','HH24:MI:SS')::time and to_timestamp('07:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"7H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('08:00:00','HH24:MI:SS')::time and to_timestamp('08:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"8H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('09:00:00','HH24:MI:SS')::time and to_timestamp('09:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"9H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('10:00:00','HH24:MI:SS')::time and to_timestamp('10:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"10H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('11:00:00','HH24:MI:SS')::time and to_timestamp('11:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"11H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('12:00:00','HH24:MI:SS')::time and to_timestamp('12:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"12H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('13:00:00','HH24:MI:SS')::time and to_timestamp('13:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"13H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('14:00:00','HH24:MI:SS')::time and to_timestamp('14:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"14H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('15:00:00','HH24:MI:SS')::time and to_timestamp('15:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"15H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('16:00:00','HH24:MI:SS')::time and to_timestamp('16:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"16H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('17:00:00','HH24:MI:SS')::time and to_timestamp('17:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"17H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('18:00:00','HH24:MI:SS')::time and to_timestamp('18:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"18H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('19:00:00','HH24:MI:SS')::time and to_timestamp('19:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"19H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('20:00:00','HH24:MI:SS')::time and to_timestamp('20:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"20H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('21:00:00','HH24:MI:SS')::time and to_timestamp('21:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"21H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('22:00:00','HH24:MI:SS')::time and to_timestamp('22:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"22H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('23:00:00','HH24:MI:SS')::time and to_timestamp('23:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"23H\""
-                + " from t_biz_type b;";
-        PgConnection con = new PgConnection();
-        ResultSet r = con.getStatement().executeQuery(SQL);
-        while (r.next()) {
-            ArrayList row = new ArrayList();
-            for (int i = 1; i <= 25; i++) {
-                row.add(r.getString(i));
+            String SQL = "Select b.name,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('00:00:00','HH24:MI:SS')::time and to_timestamp('00:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"0H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('01:00:00','HH24:MI:SS')::time and to_timestamp('01:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"1H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('02:00:00','HH24:MI:SS')::time and to_timestamp('02:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"2H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('03:00:00','HH24:MI:SS')::time and to_timestamp('03:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"3H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('04:00:00','HH24:MI:SS')::time and to_timestamp('04:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"4H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('05:00:00','HH24:MI:SS')::time and to_timestamp('05:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"5H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('06:00:00','HH24:MI:SS')::time and to_timestamp('06:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"6H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('07:00:00','HH24:MI:SS')::time and to_timestamp('07:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"7H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('08:00:00','HH24:MI:SS')::time and to_timestamp('08:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"8H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('09:00:00','HH24:MI:SS')::time and to_timestamp('09:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"9H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('10:00:00','HH24:MI:SS')::time and to_timestamp('10:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"10H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('11:00:00','HH24:MI:SS')::time and to_timestamp('11:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"11H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('12:00:00','HH24:MI:SS')::time and to_timestamp('12:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"12H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('13:00:00','HH24:MI:SS')::time and to_timestamp('13:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"13H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('14:00:00','HH24:MI:SS')::time and to_timestamp('14:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"14H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('15:00:00','HH24:MI:SS')::time and to_timestamp('15:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"15H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('16:00:00','HH24:MI:SS')::time and to_timestamp('16:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"16H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('17:00:00','HH24:MI:SS')::time and to_timestamp('17:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"17H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('18:00:00','HH24:MI:SS')::time and to_timestamp('18:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"18H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('19:00:00','HH24:MI:SS')::time and to_timestamp('19:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"19H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('20:00:00','HH24:MI:SS')::time and to_timestamp('20:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"20H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('21:00:00','HH24:MI:SS')::time and to_timestamp('21:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"21H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('22:00:00','HH24:MI:SS')::time and to_timestamp('22:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"22H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('23:00:00','HH24:MI:SS')::time and to_timestamp('23:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"23H\""
+                    + " from t_biz_type b;";
+
+            ResultSet r = con.createStatement().executeQuery(SQL);
+            while (r.next()) {
+                ArrayList row = new ArrayList();
+                for (int i = 1; i <= 25; i++) {
+                    row.add(r.getString(i));
+                }
+                this.table.add(row);
             }
-            this.table.add(row);
-        }
 
-        dateCon = " and to_date(to_char(t2.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') ";
+            dateCon = " and to_date(to_char(t2.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') ";
 
-        SQL = "Select "
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('00:00:00','HH24:MI:SS')::time and to_timestamp('00:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"0H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('01:00:00','HH24:MI:SS')::time and to_timestamp('01:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"1H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('02:00:00','HH24:MI:SS')::time and to_timestamp('02:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"2H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('03:00:00','HH24:MI:SS')::time and to_timestamp('03:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"3H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('04:00:00','HH24:MI:SS')::time and to_timestamp('04:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"4H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('05:00:00','HH24:MI:SS')::time and to_timestamp('05:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"5H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('06:00:00','HH24:MI:SS')::time and to_timestamp('06:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"6H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('07:00:00','HH24:MI:SS')::time and to_timestamp('07:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"7H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('08:00:00','HH24:MI:SS')::time and to_timestamp('08:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"8H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('09:00:00','HH24:MI:SS')::time and to_timestamp('09:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"9H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('10:00:00','HH24:MI:SS')::time and to_timestamp('10:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"10H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('11:00:00','HH24:MI:SS')::time and to_timestamp('11:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"11H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('12:00:00','HH24:MI:SS')::time and to_timestamp('12:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"12H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('13:00:00','HH24:MI:SS')::time and to_timestamp('13:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"13H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('14:00:00','HH24:MI:SS')::time and to_timestamp('14:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"14H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('15:00:00','HH24:MI:SS')::time and to_timestamp('15:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"15H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('16:00:00','HH24:MI:SS')::time and to_timestamp('16:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"16H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('17:00:00','HH24:MI:SS')::time and to_timestamp('17:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"17H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('18:00:00','HH24:MI:SS')::time and to_timestamp('18:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"18H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('19:00:00','HH24:MI:SS')::time and to_timestamp('19:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"19H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('20:00:00','HH24:MI:SS')::time and to_timestamp('20:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"20H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('21:00:00','HH24:MI:SS')::time and to_timestamp('21:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"21H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('22:00:00','HH24:MI:SS')::time and to_timestamp('22:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"22H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('23:00:00','HH24:MI:SS')::time and to_timestamp('23:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"23H\""
-                + ";";
-        r = con.getStatement().executeQuery(SQL);
-        if (r.next()) {
-            ArrayList row = new ArrayList();
-            row.add("Totale");
-            for (int i = 1; i <= 24; i++) {
-                row.add(r.getString(i));
+            SQL = "Select "
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('00:00:00','HH24:MI:SS')::time and to_timestamp('00:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"0H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('01:00:00','HH24:MI:SS')::time and to_timestamp('01:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"1H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('02:00:00','HH24:MI:SS')::time and to_timestamp('02:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"2H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('03:00:00','HH24:MI:SS')::time and to_timestamp('03:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"3H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('04:00:00','HH24:MI:SS')::time and to_timestamp('04:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"4H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('05:00:00','HH24:MI:SS')::time and to_timestamp('05:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"5H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('06:00:00','HH24:MI:SS')::time and to_timestamp('06:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"6H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('07:00:00','HH24:MI:SS')::time and to_timestamp('07:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"7H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('08:00:00','HH24:MI:SS')::time and to_timestamp('08:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"8H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('09:00:00','HH24:MI:SS')::time and to_timestamp('09:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"9H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('10:00:00','HH24:MI:SS')::time and to_timestamp('10:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"10H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('11:00:00','HH24:MI:SS')::time and to_timestamp('11:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"11H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('12:00:00','HH24:MI:SS')::time and to_timestamp('12:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"12H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('13:00:00','HH24:MI:SS')::time and to_timestamp('13:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"13H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('14:00:00','HH24:MI:SS')::time and to_timestamp('14:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"14H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('15:00:00','HH24:MI:SS')::time and to_timestamp('15:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"15H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('16:00:00','HH24:MI:SS')::time and to_timestamp('16:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"16H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('17:00:00','HH24:MI:SS')::time and to_timestamp('17:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"17H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('18:00:00','HH24:MI:SS')::time and to_timestamp('18:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"18H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('19:00:00','HH24:MI:SS')::time and to_timestamp('19:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"19H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('20:00:00','HH24:MI:SS')::time and to_timestamp('20:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"20H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('21:00:00','HH24:MI:SS')::time and to_timestamp('21:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"21H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('22:00:00','HH24:MI:SS')::time and to_timestamp('22:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"22H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('23:00:00','HH24:MI:SS')::time and to_timestamp('23:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=2) as \"23H\""
+                    + ";";
+            r = con.createStatement().executeQuery(SQL);
+            if (r.next()) {
+                ArrayList row = new ArrayList();
+                row.add("Totale");
+                for (int i = 1; i <= 24; i++) {
+                    row.add(r.getString(i));
+                }
+                this.table.add(row);
             }
-            this.table.add(row);
-        }
 
-        con.closeConnection();
+            con.close();
+        } catch (Exception e) {
+            logger.error(e.getMessage());
+        }
         return this.table;
     }
 
-    public void generateNdtsaChart(HttpServletRequest request, String d1, String d2, String db) throws SQLException, IOException, ClassNotFoundException, FileNotFoundException, ParserConfigurationException, SAXException, Exception {
+    public void generateNdtsaChart(HttpServletRequest request, String d1, String d2, String db) {
         this.date1 = (d1 == null) ? format.format(new Date()) : d1;
         this.date2 = (d2 == null) ? format.format(new Date()) : d2;
         this.DB = db;
-        String dateCon = " and to_date(to_char(t2.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') ";
+        try (Connection con = new CPConnection().getConnection()) {
+            String dateCon = " and to_date(to_char(t2.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') ";
 
-        String SQL = "Select "
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('00:00:00','HH24:MI:SS')::time and to_timestamp('00:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"0H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('01:00:00','HH24:MI:SS')::time and to_timestamp('01:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"1H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('02:00:00','HH24:MI:SS')::time and to_timestamp('02:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"2H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('03:00:00','HH24:MI:SS')::time and to_timestamp('03:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"3H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('04:00:00','HH24:MI:SS')::time and to_timestamp('04:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"4H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('05:00:00','HH24:MI:SS')::time and to_timestamp('05:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"5H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('06:00:00','HH24:MI:SS')::time and to_timestamp('06:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"6H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('07:00:00','HH24:MI:SS')::time and to_timestamp('07:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"7H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('08:00:00','HH24:MI:SS')::time and to_timestamp('08:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"8H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('09:00:00','HH24:MI:SS')::time and to_timestamp('09:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"9H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('10:00:00','HH24:MI:SS')::time and to_timestamp('10:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"10H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('11:00:00','HH24:MI:SS')::time and to_timestamp('11:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"11H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('12:00:00','HH24:MI:SS')::time and to_timestamp('12:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"12H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('13:00:00','HH24:MI:SS')::time and to_timestamp('13:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"13H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('14:00:00','HH24:MI:SS')::time and to_timestamp('14:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"14H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('15:00:00','HH24:MI:SS')::time and to_timestamp('15:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"15H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('16:00:00','HH24:MI:SS')::time and to_timestamp('16:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"16H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('17:00:00','HH24:MI:SS')::time and to_timestamp('17:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"17H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('18:00:00','HH24:MI:SS')::time and to_timestamp('18:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"18H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('19:00:00','HH24:MI:SS')::time and to_timestamp('19:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"19H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('20:00:00','HH24:MI:SS')::time and to_timestamp('20:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"20H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('21:00:00','HH24:MI:SS')::time and to_timestamp('21:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"21H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('22:00:00','HH24:MI:SS')::time and to_timestamp('22:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"22H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('23:00:00','HH24:MI:SS')::time and to_timestamp('23:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"23H\""
-                + ";";
-        PgConnection con = new PgConnection();
-        ResultSet r = con.getStatement().executeQuery(SQL);
-        if (r.next()) {
-            ArrayList row = new ArrayList();
-            for (int i = 1; i <= 24; i++) {
-                row.add(r.getString(i));
+            String SQL = "Select "
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('00:00:00','HH24:MI:SS')::time and to_timestamp('00:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"0H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('01:00:00','HH24:MI:SS')::time and to_timestamp('01:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"1H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('02:00:00','HH24:MI:SS')::time and to_timestamp('02:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"2H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('03:00:00','HH24:MI:SS')::time and to_timestamp('03:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"3H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('04:00:00','HH24:MI:SS')::time and to_timestamp('04:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"4H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('05:00:00','HH24:MI:SS')::time and to_timestamp('05:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"5H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('06:00:00','HH24:MI:SS')::time and to_timestamp('06:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"6H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('07:00:00','HH24:MI:SS')::time and to_timestamp('07:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"7H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('08:00:00','HH24:MI:SS')::time and to_timestamp('08:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"8H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('09:00:00','HH24:MI:SS')::time and to_timestamp('09:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"9H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('10:00:00','HH24:MI:SS')::time and to_timestamp('10:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"10H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('11:00:00','HH24:MI:SS')::time and to_timestamp('11:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"11H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('12:00:00','HH24:MI:SS')::time and to_timestamp('12:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"12H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('13:00:00','HH24:MI:SS')::time and to_timestamp('13:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"13H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('14:00:00','HH24:MI:SS')::time and to_timestamp('14:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"14H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('15:00:00','HH24:MI:SS')::time and to_timestamp('15:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"15H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('16:00:00','HH24:MI:SS')::time and to_timestamp('16:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"16H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('17:00:00','HH24:MI:SS')::time and to_timestamp('17:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"17H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('18:00:00','HH24:MI:SS')::time and to_timestamp('18:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"18H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('19:00:00','HH24:MI:SS')::time and to_timestamp('19:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"19H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('20:00:00','HH24:MI:SS')::time and to_timestamp('20:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"20H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('21:00:00','HH24:MI:SS')::time and to_timestamp('21:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"21H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('22:00:00','HH24:MI:SS')::time and to_timestamp('22:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"22H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('23:00:00','HH24:MI:SS')::time and to_timestamp('23:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"23H\""
+                    + ";";
+
+            ResultSet r = con.createStatement().executeQuery(SQL);
+            if (r.next()) {
+                ArrayList row = new ArrayList();
+                for (int i = 1; i <= 24; i++) {
+                    row.add(r.getString(i));
+                }
+                setChartData(row, 0, 24);
             }
-            setChartData(row, 0, 24);
+
+            //filling chart lable
+            setChartLables(getNdtChartCols(), 1, getNdtChartCols().length);
+
+            con.close();
+        } catch (Exception e) {
+            logger.error(e.getMessage());
         }
-
-        //filling chart lable
-        setChartLables(getNdtChartCols(), 1, getNdtChartCols().length);
-
-        con.closeConnection();
     }
 
-    public List<ArrayList<String>> generateNdtsaTable(HttpServletRequest request, String d1, String d2, String db) throws SQLException, IOException, ClassNotFoundException, FileNotFoundException, ParserConfigurationException, SAXException, Exception {
+    public List<ArrayList<String>> generateNdtsaTable(HttpServletRequest request, String d1, String d2, String db) {
         this.date1 = (d1 == null) ? format.format(new Date()) : d1;
         this.date2 = (d2 == null) ? format.format(new Date()) : d2;
         this.DB = db;
         this.table.clear();
-        String dateCon = " and to_date(to_char(t2.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') and t2.biz_type_id=b.id ";
+        try (Connection con = new CPConnection().getConnection()) {
+            String dateCon = " and to_date(to_char(t2.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') and t2.biz_type_id=b.id ";
 
-        String SQL = "Select b.name,"
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('00:00:00','HH24:MI:SS')::time and to_timestamp('00:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"0H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('01:00:00','HH24:MI:SS')::time and to_timestamp('01:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"1H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('02:00:00','HH24:MI:SS')::time and to_timestamp('02:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"2H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('03:00:00','HH24:MI:SS')::time and to_timestamp('03:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"3H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('04:00:00','HH24:MI:SS')::time and to_timestamp('04:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"4H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('05:00:00','HH24:MI:SS')::time and to_timestamp('05:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"5H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('06:00:00','HH24:MI:SS')::time and to_timestamp('06:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"6H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('07:00:00','HH24:MI:SS')::time and to_timestamp('07:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"7H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('08:00:00','HH24:MI:SS')::time and to_timestamp('08:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"8H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('09:00:00','HH24:MI:SS')::time and to_timestamp('09:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"9H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('10:00:00','HH24:MI:SS')::time and to_timestamp('10:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"10H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('11:00:00','HH24:MI:SS')::time and to_timestamp('11:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"11H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('12:00:00','HH24:MI:SS')::time and to_timestamp('12:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"12H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('13:00:00','HH24:MI:SS')::time and to_timestamp('13:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"13H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('14:00:00','HH24:MI:SS')::time and to_timestamp('14:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"14H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('15:00:00','HH24:MI:SS')::time and to_timestamp('15:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"15H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('16:00:00','HH24:MI:SS')::time and to_timestamp('16:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"16H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('17:00:00','HH24:MI:SS')::time and to_timestamp('17:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"17H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('18:00:00','HH24:MI:SS')::time and to_timestamp('18:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"18H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('19:00:00','HH24:MI:SS')::time and to_timestamp('19:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"19H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('20:00:00','HH24:MI:SS')::time and to_timestamp('20:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"20H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('21:00:00','HH24:MI:SS')::time and to_timestamp('21:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"21H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('22:00:00','HH24:MI:SS')::time and to_timestamp('22:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"22H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('23:00:00','HH24:MI:SS')::time and to_timestamp('23:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"23H\""
-                + " from t_biz_type b;";
-        PgConnection con = new PgConnection();
-        ResultSet r = con.getStatement().executeQuery(SQL);
-        while (r.next()) {
-            ArrayList row = new ArrayList();
-            for (int i = 1; i <= 25; i++) {
-                row.add(r.getString(i));
+            String SQL = "Select b.name,"
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('00:00:00','HH24:MI:SS')::time and to_timestamp('00:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"0H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('01:00:00','HH24:MI:SS')::time and to_timestamp('01:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"1H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('02:00:00','HH24:MI:SS')::time and to_timestamp('02:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"2H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('03:00:00','HH24:MI:SS')::time and to_timestamp('03:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"3H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('04:00:00','HH24:MI:SS')::time and to_timestamp('04:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"4H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('05:00:00','HH24:MI:SS')::time and to_timestamp('05:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"5H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('06:00:00','HH24:MI:SS')::time and to_timestamp('06:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"6H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('07:00:00','HH24:MI:SS')::time and to_timestamp('07:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"7H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('08:00:00','HH24:MI:SS')::time and to_timestamp('08:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"8H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('09:00:00','HH24:MI:SS')::time and to_timestamp('09:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"9H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('10:00:00','HH24:MI:SS')::time and to_timestamp('10:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"10H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('11:00:00','HH24:MI:SS')::time and to_timestamp('11:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"11H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('12:00:00','HH24:MI:SS')::time and to_timestamp('12:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"12H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('13:00:00','HH24:MI:SS')::time and to_timestamp('13:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"13H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('14:00:00','HH24:MI:SS')::time and to_timestamp('14:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"14H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('15:00:00','HH24:MI:SS')::time and to_timestamp('15:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"15H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('16:00:00','HH24:MI:SS')::time and to_timestamp('16:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"16H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('17:00:00','HH24:MI:SS')::time and to_timestamp('17:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"17H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('18:00:00','HH24:MI:SS')::time and to_timestamp('18:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"18H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('19:00:00','HH24:MI:SS')::time and to_timestamp('19:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"19H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('20:00:00','HH24:MI:SS')::time and to_timestamp('20:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"20H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('21:00:00','HH24:MI:SS')::time and to_timestamp('21:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"21H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('22:00:00','HH24:MI:SS')::time and to_timestamp('22:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"22H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('23:00:00','HH24:MI:SS')::time and to_timestamp('23:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"23H\""
+                    + " from t_biz_type b;";
+
+            ResultSet r = con.createStatement().executeQuery(SQL);
+            while (r.next()) {
+                ArrayList row = new ArrayList();
+                for (int i = 1; i <= 25; i++) {
+                    row.add(r.getString(i));
+                }
+                this.table.add(row);
             }
-            this.table.add(row);
-        }
-        dateCon = " and to_date(to_char(t2.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') ";
+            dateCon = " and to_date(to_char(t2.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') ";
 
-        SQL = "Select "
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('00:00:00','HH24:MI:SS')::time and to_timestamp('00:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"0H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('01:00:00','HH24:MI:SS')::time and to_timestamp('01:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"1H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('02:00:00','HH24:MI:SS')::time and to_timestamp('02:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"2H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('03:00:00','HH24:MI:SS')::time and to_timestamp('03:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"3H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('04:00:00','HH24:MI:SS')::time and to_timestamp('04:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"4H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('05:00:00','HH24:MI:SS')::time and to_timestamp('05:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"5H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('06:00:00','HH24:MI:SS')::time and to_timestamp('06:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"6H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('07:00:00','HH24:MI:SS')::time and to_timestamp('07:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"7H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('08:00:00','HH24:MI:SS')::time and to_timestamp('08:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"8H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('09:00:00','HH24:MI:SS')::time and to_timestamp('09:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"9H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('10:00:00','HH24:MI:SS')::time and to_timestamp('10:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"10H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('11:00:00','HH24:MI:SS')::time and to_timestamp('11:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"11H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('12:00:00','HH24:MI:SS')::time and to_timestamp('12:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"12H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('13:00:00','HH24:MI:SS')::time and to_timestamp('13:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"13H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('14:00:00','HH24:MI:SS')::time and to_timestamp('14:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"14H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('15:00:00','HH24:MI:SS')::time and to_timestamp('15:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"15H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('16:00:00','HH24:MI:SS')::time and to_timestamp('16:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"16H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('17:00:00','HH24:MI:SS')::time and to_timestamp('17:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"17H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('18:00:00','HH24:MI:SS')::time and to_timestamp('18:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"18H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('19:00:00','HH24:MI:SS')::time and to_timestamp('19:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"19H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('20:00:00','HH24:MI:SS')::time and to_timestamp('20:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"20H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('21:00:00','HH24:MI:SS')::time and to_timestamp('21:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"21H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('22:00:00','HH24:MI:SS')::time and to_timestamp('22:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"22H\","
-                + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('23:00:00','HH24:MI:SS')::time and to_timestamp('23:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"23H\""
-                + ";";
-        r = con.getStatement().executeQuery(SQL);
-        if (r.next()) {
-            ArrayList row = new ArrayList();
-            row.add("Totale");
-            for (int i = 1; i <= 24; i++) {
-                row.add(r.getString(i));
+            SQL = "Select "
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('00:00:00','HH24:MI:SS')::time and to_timestamp('00:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"0H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('01:00:00','HH24:MI:SS')::time and to_timestamp('01:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"1H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('02:00:00','HH24:MI:SS')::time and to_timestamp('02:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"2H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('03:00:00','HH24:MI:SS')::time and to_timestamp('03:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"3H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('04:00:00','HH24:MI:SS')::time and to_timestamp('04:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"4H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('05:00:00','HH24:MI:SS')::time and to_timestamp('05:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"5H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('06:00:00','HH24:MI:SS')::time and to_timestamp('06:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"6H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('07:00:00','HH24:MI:SS')::time and to_timestamp('07:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"7H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('08:00:00','HH24:MI:SS')::time and to_timestamp('08:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"8H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('09:00:00','HH24:MI:SS')::time and to_timestamp('09:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"9H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('10:00:00','HH24:MI:SS')::time and to_timestamp('10:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"10H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('11:00:00','HH24:MI:SS')::time and to_timestamp('11:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"11H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('12:00:00','HH24:MI:SS')::time and to_timestamp('12:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"12H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('13:00:00','HH24:MI:SS')::time and to_timestamp('13:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"13H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('14:00:00','HH24:MI:SS')::time and to_timestamp('14:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"14H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('15:00:00','HH24:MI:SS')::time and to_timestamp('15:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"15H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('16:00:00','HH24:MI:SS')::time and to_timestamp('16:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"16H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('17:00:00','HH24:MI:SS')::time and to_timestamp('17:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"17H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('18:00:00','HH24:MI:SS')::time and to_timestamp('18:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"18H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('19:00:00','HH24:MI:SS')::time and to_timestamp('19:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"19H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('20:00:00','HH24:MI:SS')::time and to_timestamp('20:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"20H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('21:00:00','HH24:MI:SS')::time and to_timestamp('21:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"21H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('22:00:00','HH24:MI:SS')::time and to_timestamp('22:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"22H\","
+                    + "(select count(*) from t_ticket t2 where to_timestamp(to_char(t2.ticket_time,'HH24:MI:SS'),'HH24:MI:SS')::time between to_timestamp('23:00:00','HH24:MI:SS')::time and to_timestamp('23:59:59','HH24:MI:SS')::time " + dateCon + " and t2.status=0) as \"23H\""
+                    + ";";
+            r = con.createStatement().executeQuery(SQL);
+            if (r.next()) {
+                ArrayList row = new ArrayList();
+                row.add("Totale");
+                for (int i = 1; i <= 24; i++) {
+                    row.add(r.getString(i));
+                }
+                this.table.add(row);
             }
-            this.table.add(row);
-        }
 
-        con.closeConnection();
+            con.close();
+        } catch (Exception e) {
+            logger.error(e.getMessage());
+        }
         return this.table;
     }
 
-    public List<ArrayList<String>> generateGlaTable(HttpServletRequest request, String d1, String d2, String db) throws SQLException, IOException, ClassNotFoundException, FileNotFoundException, ParserConfigurationException, SAXException, Exception {
+    public List<ArrayList<String>> generateGlaTable(HttpServletRequest request, String d1, String d2, String db)  {
         this.date1 = (d1 == null) ? format.format(new Date()) : d1;
         this.date2 = (d2 == null) ? format.format(new Date()) : d2;
         this.DB = db;
         this.table.clear();
-        String dateCon = "and to_date(to_char(t.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD')  ";
-        String SQL = "SELECT  "
-                + "b.name, "
-                + "(select count(*) from t_ticket t where t.biz_type_id=b.id and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric<=300 and t.call_time is not null " + dateCon + ") as m0_5, "
-                + "(select count(*) from t_ticket t where t.biz_type_id=b.id and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric>300 and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric<=600  and t.call_time is not null  " + dateCon + ") as m5_10, "
-                + "(select count(*) from t_ticket t where t.biz_type_id=b.id and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric>600 and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric<=1200 and t.call_time is not null  " + dateCon + ") as m10_20, "
-                + "(select count(*) from t_ticket t where t.biz_type_id=b.id and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric>1200 and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric<=1800  and t.call_time is not null  " + dateCon + ") as m20_30, "
-                + "(select count(*) from t_ticket t where t.biz_type_id=b.id and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric>1800 and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric<=2700  and t.call_time is not null  " + dateCon + ") as m30_45, "
-                + "(select count(*) from t_ticket t where t.biz_type_id=b.id and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric>2700 and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric<=3000  and t.call_time is not null  " + dateCon + ") as m45_50, "
-                + "(select count(*) from t_ticket t where t.biz_type_id=b.id and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric>3000  and t.call_time is not null  " + dateCon + ") as m50, "
-                + " "
-                + "(select count(*) from t_ticket t where t.biz_type_id=b.id and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric<=15 and t.call_time is not null  " + dateCon + ") as s0_15, "
-                + "(select count(*) from t_ticket t where t.biz_type_id=b.id and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric>15 and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric<=30  and t.call_time is not null  " + dateCon + ") as s15_30, "
-                + "(select count(*) from t_ticket t where t.biz_type_id=b.id and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric>30 and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric<=60 and t.call_time is not null  " + dateCon + ") as s30_60, "
-                + "(select count(*) from t_ticket t where t.biz_type_id=b.id and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric>60 and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric<=90  and t.call_time is not null  " + dateCon + ") as s60_90, "
-                + "(select count(*) from t_ticket t where t.biz_type_id=b.id and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric>90 and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric<=120 and t.call_time is not null  " + dateCon + ") as s90_120, "
-                + "(select count(*) from t_ticket t where t.biz_type_id=b.id and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric>120 and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric<=300  and t.call_time is not null  " + dateCon + ") as s120, "
-                + " "
-                + "(select count(*) from t_ticket t where t.biz_type_id=b.id and t.call_time is not null  " + dateCon + ") as total "
-                + "FROM t_biz_type b "
-                + ";";
-        PgConnection con = new PgConnection();
-        ResultSet r = con.getStatement().executeQuery(SQL);
-        while (r.next()) {
-            ArrayList row = new ArrayList();
-            row.add(r.getString("name"));
-            row.add(r.getLong("s0_15") + "");
-            row.add(r.getLong("s15_30") + "");
-            row.add(r.getLong("s30_60") + "");
-            row.add(r.getLong("s60_90") + "");
-            row.add(r.getLong("s90_120") + "");
-            row.add(r.getLong("s120") + "");
+        try (Connection con = new CPConnection().getConnection()) {
+            String dateCon = "and to_date(to_char(t.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD')  ";
+            String SQL = "SELECT  "
+                    + "b.name, "
+                    + "(select count(*) from t_ticket t where t.biz_type_id=b.id and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric<=300 and t.call_time is not null " + dateCon + ") as m0_5, "
+                    + "(select count(*) from t_ticket t where t.biz_type_id=b.id and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric>300 and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric<=600  and t.call_time is not null  " + dateCon + ") as m5_10, "
+                    + "(select count(*) from t_ticket t where t.biz_type_id=b.id and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric>600 and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric<=1200 and t.call_time is not null  " + dateCon + ") as m10_20, "
+                    + "(select count(*) from t_ticket t where t.biz_type_id=b.id and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric>1200 and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric<=1800  and t.call_time is not null  " + dateCon + ") as m20_30, "
+                    + "(select count(*) from t_ticket t where t.biz_type_id=b.id and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric>1800 and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric<=2700  and t.call_time is not null  " + dateCon + ") as m30_45, "
+                    + "(select count(*) from t_ticket t where t.biz_type_id=b.id and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric>2700 and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric<=3000  and t.call_time is not null  " + dateCon + ") as m45_50, "
+                    + "(select count(*) from t_ticket t where t.biz_type_id=b.id and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric>3000  and t.call_time is not null  " + dateCon + ") as m50, "
+                    + " "
+                    + "(select count(*) from t_ticket t where t.biz_type_id=b.id and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric<=15 and t.call_time is not null  " + dateCon + ") as s0_15, "
+                    + "(select count(*) from t_ticket t where t.biz_type_id=b.id and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric>15 and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric<=30  and t.call_time is not null  " + dateCon + ") as s15_30, "
+                    + "(select count(*) from t_ticket t where t.biz_type_id=b.id and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric>30 and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric<=60 and t.call_time is not null  " + dateCon + ") as s30_60, "
+                    + "(select count(*) from t_ticket t where t.biz_type_id=b.id and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric>60 and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric<=90  and t.call_time is not null  " + dateCon + ") as s60_90, "
+                    + "(select count(*) from t_ticket t where t.biz_type_id=b.id and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric>90 and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric<=120 and t.call_time is not null  " + dateCon + ") as s90_120, "
+                    + "(select count(*) from t_ticket t where t.biz_type_id=b.id and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric>120 and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric<=300  and t.call_time is not null  " + dateCon + ") as s120, "
+                    + " "
+                    + "(select count(*) from t_ticket t where t.biz_type_id=b.id and t.call_time is not null  " + dateCon + ") as total "
+                    + "FROM t_biz_type b "
+                    + ";";
 
-            row.add(r.getLong("m0_5") + "");
-            row.add(r.getLong("m5_10") + "");
-            row.add(r.getLong("m10_20") + "");
-            row.add(r.getLong("m20_30") + "");
-            row.add(r.getLong("m30_45") + "");
-            row.add(r.getLong("m45_50") + "");
-            row.add(r.getLong("m50") + "");
-            row.add(r.getLong("total") + "");
-            this.table.add(row);
+            ResultSet r = con.createStatement().executeQuery(SQL);
+            while (r.next()) {
+                ArrayList row = new ArrayList();
+                row.add(r.getString("name"));
+                row.add(r.getLong("s0_15") + "");
+                row.add(r.getLong("s15_30") + "");
+                row.add(r.getLong("s30_60") + "");
+                row.add(r.getLong("s60_90") + "");
+                row.add(r.getLong("s90_120") + "");
+                row.add(r.getLong("s120") + "");
+
+                row.add(r.getLong("m0_5") + "");
+                row.add(r.getLong("m5_10") + "");
+                row.add(r.getLong("m10_20") + "");
+                row.add(r.getLong("m20_30") + "");
+                row.add(r.getLong("m30_45") + "");
+                row.add(r.getLong("m45_50") + "");
+                row.add(r.getLong("m50") + "");
+                row.add(r.getLong("total") + "");
+                this.table.add(row);
+            }
+            String subSQL = "SELECT  "
+                    + "(select count(*) from t_ticket t where  DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric<=300 and t.call_time is not null  " + dateCon + ") as m0_5, "
+                    + "(select count(*) from t_ticket t where  DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric>300 and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric<=600  and t.call_time is not null  " + dateCon + ") as m5_10, "
+                    + "(select count(*) from t_ticket t where  DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric>600 and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric<=1200 and t.call_time is not null " + dateCon + " ) as m10_20, "
+                    + "(select count(*) from t_ticket t where  DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric>1200 and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric<=1800  and t.call_time is not null  " + dateCon + ") as m20_30, "
+                    + "(select count(*) from t_ticket t where  DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric>1800 and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric<=2700  and t.call_time is not null  " + dateCon + ") as m30_45, "
+                    + "(select count(*) from t_ticket t where  DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric>2700 and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric<=3000  and t.call_time is not null  " + dateCon + ") as m45_50, "
+                    + "(select count(*) from t_ticket t where  DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric>3000  and t.call_time is not null  " + dateCon + ") as m50, "
+                    + " "
+                    + "(select count(*) from t_ticket t where  DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric<=15 and t.call_time is not null  " + dateCon + ") as s0_15, "
+                    + "(select count(*) from t_ticket t where  DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric>15 and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric<=30  and t.call_time is not null  " + dateCon + ") as s15_30, "
+                    + "(select count(*) from t_ticket t where  DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric>30 and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric<=60 and t.call_time is not null  " + dateCon + ") as s30_60, "
+                    + "(select count(*) from t_ticket t where  DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric>60 and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric<=90  and t.call_time is not null  " + dateCon + ") as s60_90, "
+                    + "(select count(*) from t_ticket t where  DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric>90 and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric<=120 and t.call_time is not null  " + dateCon + ") as s90_120, "
+                    + "(select count(*) from t_ticket t where  DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric>120 and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric<=300  and t.call_time is not null  " + dateCon + ") as s120, "
+                    + " "
+                    + "(select count(*) from t_ticket t where  t.call_time is not null " + dateCon + " ) as total "
+                    + ";";
+            r = con.createStatement().executeQuery(subSQL);
+
+            while (r.next()) {
+                ArrayList row = new ArrayList();
+                row.add("Totale");
+                row.add(r.getLong("s0_15") + "");
+                row.add(r.getLong("s15_30") + "");
+                row.add(r.getLong("s30_60") + "");
+                row.add(r.getLong("s60_90") + "");
+                row.add(r.getLong("s90_120") + "");
+                row.add(r.getLong("s120") + "");
+
+                row.add(r.getLong("m0_5") + "");
+                row.add(r.getLong("m5_10") + "");
+                row.add(r.getLong("m10_20") + "");
+                row.add(r.getLong("m20_30") + "");
+                row.add(r.getLong("m30_45") + "");
+                row.add(r.getLong("m45_50") + "");
+                row.add(r.getLong("m50") + "");
+                row.add(r.getLong("total") + "");
+                setChartData2(row, 1, row.size() - 1, 7);
+                this.table.add(row);
+            }
+            //fill chart label
+            setChartLables2(getGlaCols(), 2, getGlaCols().length - 1, 8);
+
+            con.close();
+        } catch (Exception e) {
+            logger.error(e.getMessage());
         }
-        String subSQL = "SELECT  "
-                + "(select count(*) from t_ticket t where  DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric<=300 and t.call_time is not null  " + dateCon + ") as m0_5, "
-                + "(select count(*) from t_ticket t where  DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric>300 and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric<=600  and t.call_time is not null  " + dateCon + ") as m5_10, "
-                + "(select count(*) from t_ticket t where  DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric>600 and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric<=1200 and t.call_time is not null " + dateCon + " ) as m10_20, "
-                + "(select count(*) from t_ticket t where  DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric>1200 and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric<=1800  and t.call_time is not null  " + dateCon + ") as m20_30, "
-                + "(select count(*) from t_ticket t where  DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric>1800 and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric<=2700  and t.call_time is not null  " + dateCon + ") as m30_45, "
-                + "(select count(*) from t_ticket t where  DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric>2700 and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric<=3000  and t.call_time is not null  " + dateCon + ") as m45_50, "
-                + "(select count(*) from t_ticket t where  DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric>3000  and t.call_time is not null  " + dateCon + ") as m50, "
-                + " "
-                + "(select count(*) from t_ticket t where  DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric<=15 and t.call_time is not null  " + dateCon + ") as s0_15, "
-                + "(select count(*) from t_ticket t where  DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric>15 and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric<=30  and t.call_time is not null  " + dateCon + ") as s15_30, "
-                + "(select count(*) from t_ticket t where  DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric>30 and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric<=60 and t.call_time is not null  " + dateCon + ") as s30_60, "
-                + "(select count(*) from t_ticket t where  DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric>60 and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric<=90  and t.call_time is not null  " + dateCon + ") as s60_90, "
-                + "(select count(*) from t_ticket t where  DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric>90 and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric<=120 and t.call_time is not null  " + dateCon + ") as s90_120, "
-                + "(select count(*) from t_ticket t where  DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric>120 and DATE_PART('epoch'::text, t.call_time - t.ticket_time)::numeric<=300  and t.call_time is not null  " + dateCon + ") as s120, "
-                + " "
-                + "(select count(*) from t_ticket t where  t.call_time is not null " + dateCon + " ) as total "
-                + ";";
-        r = con.getStatement().executeQuery(subSQL);
-
-        while (r.next()) {
-            ArrayList row = new ArrayList();
-            row.add("Totale");
-            row.add(r.getLong("s0_15") + "");
-            row.add(r.getLong("s15_30") + "");
-            row.add(r.getLong("s30_60") + "");
-            row.add(r.getLong("s60_90") + "");
-            row.add(r.getLong("s90_120") + "");
-            row.add(r.getLong("s120") + "");
-
-            row.add(r.getLong("m0_5") + "");
-            row.add(r.getLong("m5_10") + "");
-            row.add(r.getLong("m10_20") + "");
-            row.add(r.getLong("m20_30") + "");
-            row.add(r.getLong("m30_45") + "");
-            row.add(r.getLong("m45_50") + "");
-            row.add(r.getLong("m50") + "");
-            row.add(r.getLong("total") + "");
-            setChartData2(row, 1, row.size() - 1, 7);
-            this.table.add(row);
-        }
-        //fill chart label
-        setChartLables2(getGlaCols(), 2, getGlaCols().length - 1, 8);
-
-        con.closeConnection();
         return this.table;
     }
 
-    public List<ArrayList<String>> generateGltTable(HttpServletRequest request, String d1, String d2, String db) throws SQLException, IOException, ClassNotFoundException, FileNotFoundException, ParserConfigurationException, SAXException, Exception {
+    public List<ArrayList<String>> generateGltTable(HttpServletRequest request, String d1, String d2, String db)  {
         this.date1 = (d1 == null) ? format.format(new Date()) : d1;
         this.date2 = (d2 == null) ? format.format(new Date()) : d2;
         this.DB = db;
         this.table.clear();
-        String dateCon = "and to_date(to_char(t.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD')  ";
-        String SQL = "SELECT  "
-                + "b.name, "
-                + "(select count(*) from t_ticket t where t.biz_type_id=b.id and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric>=300 and t.status=4 " + dateCon + ") as m5, "
-                + "(select count(*) from t_ticket t where t.biz_type_id=b.id and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric>300 and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric<=600  and t.status=4  " + dateCon + ") as m5_10, "
-                + "(select count(*) from t_ticket t where t.biz_type_id=b.id and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric>600 and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric<=1200 and t.status=4  " + dateCon + ") as m10_20, "
-                + "(select count(*) from t_ticket t where t.biz_type_id=b.id and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric>1200 and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric<=1800  and t.status=4  " + dateCon + ") as m20_30, "
-                + "(select count(*) from t_ticket t where t.biz_type_id=b.id and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric>1800 and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric<=2700  and t.status=4  " + dateCon + ") as m30_45, "
-                + "(select count(*) from t_ticket t where t.biz_type_id=b.id and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric>2700 and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric<=3000  and t.status=4  " + dateCon + ") as m45_50, "
-                + "(select count(*) from t_ticket t where t.biz_type_id=b.id and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric>3000  and t.status=4  " + dateCon + ") as m50, "
-                + " "
-                + "(select count(*) from t_ticket t where t.biz_type_id=b.id and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric<=15 and t.status=4  " + dateCon + ") as s0_15, "
-                + "(select count(*) from t_ticket t where t.biz_type_id=b.id and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric>15 and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric<=30  and t.status=4  " + dateCon + ") as s15_30, "
-                + "(select count(*) from t_ticket t where t.biz_type_id=b.id and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric>30 and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric<=60 and t.status=4  " + dateCon + ") as s30_60, "
-                + "(select count(*) from t_ticket t where t.biz_type_id=b.id and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric>60 and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric<=90  and t.status=4  " + dateCon + ") as s60_90, "
-                + "(select count(*) from t_ticket t where t.biz_type_id=b.id and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric>90 and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric<=120 and t.status=4  " + dateCon + ") as s90_120, "
-                + "(select count(*) from t_ticket t where t.biz_type_id=b.id and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric>120 and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric<=300  and t.status=4  " + dateCon + ") as s120, "
-                + " "
-                + "(select count(*) from t_ticket t where t.biz_type_id=b.id and t.status=4  " + dateCon + ") as total "
-                + "FROM t_biz_type b "
-                + ";";
-        PgConnection con = new PgConnection();
-        ResultSet r = con.getStatement().executeQuery(SQL);
-        while (r.next()) {
-            ArrayList row = new ArrayList();
-            row.add(r.getString("name"));
-            row.add(r.getLong("s0_15") + "");
-            row.add(r.getLong("s15_30") + "");
-            row.add(r.getLong("s30_60") + "");
-            row.add(r.getLong("s60_90") + "");
-            row.add(r.getLong("s90_120") + "");
-            row.add(r.getLong("s120") + "");
+        try (Connection con = new CPConnection().getConnection()) {
+            String dateCon = "and to_date(to_char(t.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD')  ";
+            String SQL = "SELECT  "
+                    + "b.name, "
+                    + "(select count(*) from t_ticket t where t.biz_type_id=b.id and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric>=300 and t.status=4 " + dateCon + ") as m5, "
+                    + "(select count(*) from t_ticket t where t.biz_type_id=b.id and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric>300 and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric<=600  and t.status=4  " + dateCon + ") as m5_10, "
+                    + "(select count(*) from t_ticket t where t.biz_type_id=b.id and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric>600 and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric<=1200 and t.status=4  " + dateCon + ") as m10_20, "
+                    + "(select count(*) from t_ticket t where t.biz_type_id=b.id and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric>1200 and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric<=1800  and t.status=4  " + dateCon + ") as m20_30, "
+                    + "(select count(*) from t_ticket t where t.biz_type_id=b.id and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric>1800 and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric<=2700  and t.status=4  " + dateCon + ") as m30_45, "
+                    + "(select count(*) from t_ticket t where t.biz_type_id=b.id and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric>2700 and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric<=3000  and t.status=4  " + dateCon + ") as m45_50, "
+                    + "(select count(*) from t_ticket t where t.biz_type_id=b.id and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric>3000  and t.status=4  " + dateCon + ") as m50, "
+                    + " "
+                    + "(select count(*) from t_ticket t where t.biz_type_id=b.id and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric<=15 and t.status=4  " + dateCon + ") as s0_15, "
+                    + "(select count(*) from t_ticket t where t.biz_type_id=b.id and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric>15 and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric<=30  and t.status=4  " + dateCon + ") as s15_30, "
+                    + "(select count(*) from t_ticket t where t.biz_type_id=b.id and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric>30 and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric<=60 and t.status=4  " + dateCon + ") as s30_60, "
+                    + "(select count(*) from t_ticket t where t.biz_type_id=b.id and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric>60 and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric<=90  and t.status=4  " + dateCon + ") as s60_90, "
+                    + "(select count(*) from t_ticket t where t.biz_type_id=b.id and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric>90 and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric<=120 and t.status=4  " + dateCon + ") as s90_120, "
+                    + "(select count(*) from t_ticket t where t.biz_type_id=b.id and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric>120 and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric<=300  and t.status=4  " + dateCon + ") as s120, "
+                    + " "
+                    + "(select count(*) from t_ticket t where t.biz_type_id=b.id and t.status=4  " + dateCon + ") as total "
+                    + "FROM t_biz_type b "
+                    + ";";
 
-            row.add(r.getLong("m5") + "");
-            row.add(r.getLong("m5_10") + "");
-            row.add(r.getLong("m10_20") + "");
-            row.add(r.getLong("m20_30") + "");
-            row.add(r.getLong("m30_45") + "");
-            row.add(r.getLong("m45_50") + "");
-            row.add(r.getLong("m50") + "");
-            row.add(r.getLong("total") + "");
+            ResultSet r = con.createStatement().executeQuery(SQL);
+            while (r.next()) {
+                ArrayList row = new ArrayList();
+                row.add(r.getString("name"));
+                row.add(r.getLong("s0_15") + "");
+                row.add(r.getLong("s15_30") + "");
+                row.add(r.getLong("s30_60") + "");
+                row.add(r.getLong("s60_90") + "");
+                row.add(r.getLong("s90_120") + "");
+                row.add(r.getLong("s120") + "");
 
-            this.table.add(row);
+                row.add(r.getLong("m5") + "");
+                row.add(r.getLong("m5_10") + "");
+                row.add(r.getLong("m10_20") + "");
+                row.add(r.getLong("m20_30") + "");
+                row.add(r.getLong("m30_45") + "");
+                row.add(r.getLong("m45_50") + "");
+                row.add(r.getLong("m50") + "");
+                row.add(r.getLong("total") + "");
+
+                this.table.add(row);
+            }
+            String subSQL = "SELECT  "
+                    + "(select count(*) from t_ticket t where  DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric>=300 and t.status=4  " + dateCon + ") as m5, "
+                    + "(select count(*) from t_ticket t where  DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric>300 and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric<=600  and t.status=4  " + dateCon + ") as m5_10, "
+                    + "(select count(*) from t_ticket t where  DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric>600 and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric<=1200 and t.status=4 " + dateCon + " ) as m10_20, "
+                    + "(select count(*) from t_ticket t where  DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric>1200 and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric<=1800  and t.status=4  " + dateCon + ") as m20_30, "
+                    + "(select count(*) from t_ticket t where  DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric>1800 and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric<=2700  and t.status=4  " + dateCon + ") as m30_45, "
+                    + "(select count(*) from t_ticket t where  DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric>2700 and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric<=3000  and t.status=4  " + dateCon + ") as m45_50, "
+                    + "(select count(*) from t_ticket t where  DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric>3000  and t.status=4  " + dateCon + ") as m50, "
+                    + " "
+                    + "(select count(*) from t_ticket t where  DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric<=15 and t.status=4  " + dateCon + ") as s0_15, "
+                    + "(select count(*) from t_ticket t where  DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric>15 and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric<=30  and t.status=4  " + dateCon + ") as s15_30, "
+                    + "(select count(*) from t_ticket t where  DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric>30 and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric<=60 and t.status=4  " + dateCon + ") as s30_60, "
+                    + "(select count(*) from t_ticket t where  DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric>60 and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric<=90  and t.status=4  " + dateCon + ") as s60_90, "
+                    + "(select count(*) from t_ticket t where  DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric>90 and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric<=120 and t.status=4  " + dateCon + ") as s90_120, "
+                    + "(select count(*) from t_ticket t where  DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric>120 and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric<=300  and t.status=4  " + dateCon + ") as s120, "
+                    + " "
+                    + "(select count(*) from t_ticket t where  t.status=4 " + dateCon + " ) as total "
+                    + ";";
+            r = con.createStatement().executeQuery(subSQL);
+            while (r.next()) {
+                ArrayList row = new ArrayList();
+                row.add("Totale");
+                row.add(r.getLong("s0_15") + "");
+                row.add(r.getLong("s15_30") + "");
+                row.add(r.getLong("s30_60") + "");
+                row.add(r.getLong("s60_90") + "");
+                row.add(r.getLong("s90_120") + "");
+                row.add(r.getLong("s120") + "");
+
+                row.add(r.getLong("m5") + "");
+                row.add(r.getLong("m5_10") + "");
+                row.add(r.getLong("m10_20") + "");
+                row.add(r.getLong("m20_30") + "");
+                row.add(r.getLong("m30_45") + "");
+                row.add(r.getLong("m45_50") + "");
+                row.add(r.getLong("m50") + "");
+                row.add(r.getLong("total") + "");
+                setChartData2(row, 1, row.size() - 1, 7);
+                this.table.add(row);
+            }
+            //fill chart lable
+            setChartLables2(getGltCols(), 2, getGltCols().length - 1, 8);
+
+            con.close();
+        } catch (Exception e) {
+            logger.error(e.getMessage());
         }
-        String subSQL = "SELECT  "
-                + "(select count(*) from t_ticket t where  DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric>=300 and t.status=4  " + dateCon + ") as m5, "
-                + "(select count(*) from t_ticket t where  DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric>300 and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric<=600  and t.status=4  " + dateCon + ") as m5_10, "
-                + "(select count(*) from t_ticket t where  DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric>600 and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric<=1200 and t.status=4 " + dateCon + " ) as m10_20, "
-                + "(select count(*) from t_ticket t where  DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric>1200 and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric<=1800  and t.status=4  " + dateCon + ") as m20_30, "
-                + "(select count(*) from t_ticket t where  DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric>1800 and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric<=2700  and t.status=4  " + dateCon + ") as m30_45, "
-                + "(select count(*) from t_ticket t where  DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric>2700 and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric<=3000  and t.status=4  " + dateCon + ") as m45_50, "
-                + "(select count(*) from t_ticket t where  DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric>3000  and t.status=4  " + dateCon + ") as m50, "
-                + " "
-                + "(select count(*) from t_ticket t where  DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric<=15 and t.status=4  " + dateCon + ") as s0_15, "
-                + "(select count(*) from t_ticket t where  DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric>15 and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric<=30  and t.status=4  " + dateCon + ") as s15_30, "
-                + "(select count(*) from t_ticket t where  DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric>30 and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric<=60 and t.status=4  " + dateCon + ") as s30_60, "
-                + "(select count(*) from t_ticket t where  DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric>60 and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric<=90  and t.status=4  " + dateCon + ") as s60_90, "
-                + "(select count(*) from t_ticket t where  DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric>90 and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric<=120 and t.status=4  " + dateCon + ") as s90_120, "
-                + "(select count(*) from t_ticket t where  DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric>120 and DATE_PART('epoch'::text, t.finish_time-t.start_time)::numeric<=300  and t.status=4  " + dateCon + ") as s120, "
-                + " "
-                + "(select count(*) from t_ticket t where  t.status=4 " + dateCon + " ) as total "
-                + ";";
-        r = con.getStatement().executeQuery(subSQL);
-        while (r.next()) {
-            ArrayList row = new ArrayList();
-            row.add("Totale");
-            row.add(r.getLong("s0_15") + "");
-            row.add(r.getLong("s15_30") + "");
-            row.add(r.getLong("s30_60") + "");
-            row.add(r.getLong("s60_90") + "");
-            row.add(r.getLong("s90_120") + "");
-            row.add(r.getLong("s120") + "");
-
-            row.add(r.getLong("m5") + "");
-            row.add(r.getLong("m5_10") + "");
-            row.add(r.getLong("m10_20") + "");
-            row.add(r.getLong("m20_30") + "");
-            row.add(r.getLong("m30_45") + "");
-            row.add(r.getLong("m45_50") + "");
-            row.add(r.getLong("m50") + "");
-            row.add(r.getLong("total") + "");
-            setChartData2(row, 1, row.size() - 1, 7);
-            this.table.add(row);
-        }
-        //fill chart lable
-        setChartLables2(getGltCols(), 2, getGltCols().length - 1, 8);
-
-        con.closeConnection();
         return this.table;
     }
 
-    public List<ArrayList<String>> generateTaskTable(HttpServletRequest request, String d1, String d2, String db) throws SQLException, IOException, ClassNotFoundException, FileNotFoundException, ParserConfigurationException, SAXException, Exception {
+    public List<ArrayList<String>> generateTaskTable(HttpServletRequest request, String d1, String d2, String db) {
         this.date1 = (d1 == null) ? format.format(new Date()) : d1;
         this.date2 = (d2 == null) ? format.format(new Date()) : d2;
         this.DB = db;
-        CfgHandler cfg = new CfgHandler(request);
-        String dateCon = " and to_date(to_char(t2.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') ";
+        try (Connection con = new CPConnection().getConnection()) {
+            String dateCon = " and to_date(to_char(t2.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') ";
 
-        String gblSQL2 = "select "
-                + "b.id as biz_id,"
-                + "tt.id_task,"
-                + "b.name as service,"
-                + "tch.name as task,"
-                + "(SELECT COUNT(*) FROM rougga_ticket_task tt2 , t_ticket t2 WHERE tt2.id_task=tt.id_task and tt2.id_ticket=t2.id " + dateCon + " ) AS NB_TT,"
-                + "(SELECT sum(tt2.quantity) FROM rougga_ticket_task tt2 , t_ticket t2 WHERE tt2.id_task=tt.id_task and tt2.id_ticket=t2.id " + dateCon + " ) AS NB_QTT "
-                + "from "
-                + "rougga_task tch, rougga_ticket_task tt, t_biz_type b , t_ticket t "
-                + "where "
-                + "tch.id_service=b.id and tt.id_task=tch.id and tt.id_ticket = t.id and to_date(to_char(t.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') "
-                + "group by biz_id, id_task, service , task "
-                + "order by service "
-                + ";";
+            String gblSQL2 = "select "
+                    + "b.id as biz_id,"
+                    + "tt.id_task,"
+                    + "b.name as service,"
+                    + "tch.name as task,"
+                    + "(SELECT COUNT(*) FROM rougga_ticket_task tt2 , t_ticket t2 WHERE tt2.id_task=tt.id_task and tt2.id_ticket=t2.id " + dateCon + " ) AS NB_TT,"
+                    + "(SELECT sum(tt2.quantity) FROM rougga_ticket_task tt2 , t_ticket t2 WHERE tt2.id_task=tt.id_task and tt2.id_ticket=t2.id " + dateCon + " ) AS NB_QTT "
+                    + "from "
+                    + "rougga_task tch, rougga_ticket_task tt, t_biz_type b , t_ticket t "
+                    + "where "
+                    + "tch.id_service=b.id and tt.id_task=tch.id and tt.id_ticket = t.id and to_date(to_char(t.ticket_time,'YYYY-MM-DD'),'YYYY-MM-DD')  BETWEEN TO_DATE('" + date1 + "','YYYY-MM-DD') AND TO_DATE('" + date2 + "','YYYY-MM-DD') "
+                    + "group by biz_id, id_task, service , task "
+                    + "order by service "
+                    + ";";
 
-        String subTotalSQL = "";
-        PgConnection con = new PgConnection();
-        ResultSet r = con.getStatement().executeQuery(gblSQL2);
-        table.clear();
-        while (r.next()) {
-            ArrayList<String> row = new ArrayList<>();
+            String subTotalSQL = "";
+            ResultSet r = con.createStatement().executeQuery(gblSQL2);
+            table.clear();
+            while (r.next()) {
+                ArrayList<String> row = new ArrayList<>();
 //            row.add(r.getString("biz_id"));
 //            row.add(r.getString("id_task"));
-            row.add(r.getString("service"));
-            row.add(r.getString("task"));
-            row.add(r.getLong("NB_TT") + "");
-            row.add(r.getLong("NB_QTT") + "");
-            table.add(row);
-        }
-        // r = con.getStatement().executeQuery(subTotalSQL);
+                row.add(r.getString("service"));
+                row.add(r.getString("task"));
+                row.add(r.getLong("NB_TT") + "");
+                row.add(r.getLong("NB_QTT") + "");
+                table.add(row);
+            }
+            // r = con.createStatement().executeQuery(subTotalSQL);
 //        while (r.next()) {
 //            ArrayList<String> row = new ArrayList<>();
 //            row.add("Sous-Totale");
@@ -2049,7 +2120,10 @@ public class TableGenerator {
 //            table.add(row);
 //        }
 
-        con.closeConnection();
+            con.close();
+        } catch (Exception e) {
+            logger.error(e.getMessage());
+        }
         return table;
     }
 

@@ -25,12 +25,7 @@ public class GetEmpSerTable extends HttpServlet {
             String date1 = request.getParameter("date1");
             String date2 = request.getParameter("date2");
             JSONObject result = null;
-            try {
-                result = new EmpSerTableController().generateSimpleEmpServiceTable(request, date1, date2);
-            } catch (ClassNotFoundException | SQLException e) {
-                out.print(e.getMessage());
-                logger.error(e.getMessage());
-            }
+            result = new EmpSerTableController().generateSimpleEmpServiceTable(request, date1, date2);
             out.print(result);
 
         } catch (IOException e) {

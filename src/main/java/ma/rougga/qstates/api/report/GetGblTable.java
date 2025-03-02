@@ -24,12 +24,7 @@ public class GetGblTable extends HttpServlet {
             String date1 = request.getParameter("date1");
             String date2 = request.getParameter("date2");
             JSONObject result = null;
-            try {
-                result = new GblTableController().generateSimpleGblTable(date1, date2);
-            } catch (Exception e) {
-                out.print(e.getMessage());
-                logger.error(e.getMessage());
-            }
+            result = new GblTableController().generateSimpleGblTable(date1, date2);
             out.print(result);
 
         } catch (Exception e) {

@@ -1,35 +1,18 @@
 package ma.rougga.qstates.servlets;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.URLEncoder;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.util.Objects;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerException;
-import javax.xml.transform.TransformerFactory;
-import javax.xml.transform.dom.DOMSource;
-import javax.xml.transform.stream.StreamResult;
-import ma.rougga.qstates.CfgHandler;
-import ma.rougga.qstates.PgConnection;
 import ma.rougga.qstates.controller.CibleController;
 import ma.rougga.qstates.controller.ServiceController;
 import ma.rougga.qstates.modal.Cible;
 import ma.rougga.qstates.modal.Service;
 import org.apache.commons.lang3.StringUtils;
-import org.w3c.dom.DOMException;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
-import org.xml.sax.SAXException;
 
 public class Edit extends HttpServlet {
 

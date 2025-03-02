@@ -1,4 +1,3 @@
-<%@page import="ma.rougga.qstates.PgConnection"%>
 <%@page import="java.sql.ResultSet"%>
 <%@page import="org.w3c.dom.Element"%>
 <%@page import="org.w3c.dom.Node"%>

@@ -4,7 +4,6 @@
 <%@page import="ma.rougga.qstates.modal.Task"%>
 <%@page import="ma.rougga.qstates.controller.TaskController"%>
 <%@page import="java.sql.Statement"%>
-<%@page import="ma.rougga.qstates.PgConnection"%>
 <%@page import="java.util.ArrayList"%>
 <%@page contentType="text/html" pageEncoding="UTF-8"%>
 <!DOCTYPE html>
@@ -61,17 +60,18 @@
                         </thead>
                         <tbody class=" border-dark">
                             <%
-                                Statement stm = new PgConnection().getStatement();
-                                ArrayList<Task> taches = new TaskController(stm).getTasks();
+                                ArrayList<Task> taches = new TaskController().getTasks();
                                 
                                 for(Task tache : taches){
                             %>
 
                             <tr>
-                                <th class="font-weight-bold db text-center align-middle border-dark" data-id="<%=tache.getId_service()%>"><%= new ServiceController(stm).getById(tache.getId_service()).getName() %></th>
-                                <td class="font-weight-bold border-dark"><%= tache.getName() %></td>
+                                <th class="font-weight-bold db text-center align-middle border-dark" data-id="<%=tache.getId_service()%>">
+                                    <%= new ServiceController().getById(tache.getId_service()).getName() %>
+                                </th>
+                                <td class="border-dark align-middle"><%= tache.getName() %></td>
                                 <td class=" border-dark">
-                                    <a class="btn btn-info disabled" id="tacheEdit" href="#" title="Editer"><img src="/QStates/img/icon/pencil.png"></a>
+                                    <!-- <a class="btn btn-info disabled" id="tacheEdit" href="#" title="Editer"><img src="/QStates/img/icon/pencil.png"></a>-->
                                     <a class="btn btn-danger" id="tacheDlt" href="/QStates/DeleteTask?id=<%=tache.getId().toString()%>" title="Supprimer"><img src="/QStates/img/icon/trash.png"></a>
                                 </td>
                             </tr>
@@ -101,8 +101,7 @@
                                         <select class="form-control" id="serviceName" name="serviceId" required>
                                             <option selected disabled value="0">Sélectionner service:</option>
                                             <%   
-                                                stm = new PgConnection().getStatement();
-                                                for(Service service : new ServiceController(stm).getAll()){
+                                                for(Service service : new ServiceController().getAll()){
                                             %>
                                             <option value="<%=service.getId()%>"><%=service.getName()%></option>
                                             <%

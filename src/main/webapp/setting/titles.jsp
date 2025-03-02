@@ -1,5 +1,4 @@
 <%@page import="ma.rougga.qstates.controller.TitleController"%>
-<%@page import="ma.rougga.qstates.handler.TitleHandler"%>
 <%@page import="java.util.List"%>
 <%@page contentType="text/html" pageEncoding="UTF-8"%>
 <%!

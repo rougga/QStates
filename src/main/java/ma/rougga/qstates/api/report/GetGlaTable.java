@@ -26,12 +26,7 @@ public class GetGlaTable extends HttpServlet {
             String date1 = request.getParameter("date1");
             String date2 = request.getParameter("date2");
             JSONObject result = null;
-            try {
-                result = new GlaTableController().generateGlaTable(request, date1, date2);
-            } catch (ClassNotFoundException | SQLException e) {
-                out.print(e.getMessage());
-                logger.error(e.getMessage());
-            }
+            result = new GlaTableController().generateGlaTable(request, date1, date2);
             out.print(result);
 
         } catch (IOException e) {

@@ -5,11 +5,12 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import ma.rougga.qstates.CPConnection;
+import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public  class AgenceController {
 
-    private static final org.slf4j.Logger logger = LoggerFactory.getLogger(AgenceController.class);
+    private static final Logger logger = LoggerFactory.getLogger(AgenceController.class);
 
     public AgenceController() {
     }

@@ -18,7 +18,6 @@
 <%@page import="java.text.SimpleDateFormat"%>
 <%@page import="java.sql.SQLException"%>
 <%@page import="java.sql.ResultSet"%>
-<%@page import="ma.rougga.qstates.PgConnection"%>
 <%@page import="java.util.List"%>
 <%@page import="java.util.ArrayList"%>
 <%@page contentType="text/html" pageEncoding="UTF-8"%>

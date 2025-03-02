@@ -1,6 +1,5 @@
 package ma.rougga.qstates.controller;
 
-import java.net.URLEncoder;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -10,7 +9,6 @@ import java.util.List;
 import java.util.UUID;
 import ma.rougga.qstates.CPConnection;
 import ma.rougga.qstates.CfgHandler;
-import ma.rougga.qstates.PgConnection;
 import ma.rougga.qstates.modal.Utilisateur;
 import org.slf4j.LoggerFactory;
 
@@ -22,10 +20,9 @@ public class UtilisateurController {
     }
 
     public List<Utilisateur> getAllUtilisateur() {
-        try {
+        try (Connection con = new CPConnection().getConnection()) {
             List<Utilisateur> utilisateurs = new ArrayList();
-            PgConnection con = new PgConnection();
-            ResultSet r = con.getStatement().executeQuery("select * from rougga_users order by date;");
+            ResultSet r = con.createStatement().executeQuery("select * from rougga_users order by date;");
             while (r.next()) {
                 utilisateurs.add(
                         new Utilisateur(
@@ -39,9 +36,9 @@ public class UtilisateurController {
                                 r.getString("sponsor"))
                 );
             }
-            con.closeConnection();
+            con.close();
             return utilisateurs;
-        } catch (ClassNotFoundException | SQLException e) {
+        } catch (Exception e) {
             logger.error(e.getMessage());
             return null;
         }
@@ -50,9 +47,8 @@ public class UtilisateurController {
 
     public Utilisateur getUtilisateurById(UUID id) {
         Utilisateur u = null;
-        try {
-            PgConnection con = new PgConnection();
-            PreparedStatement ps = con.getStatement().getConnection().prepareStatement("select * from rougga_users where id=?;");
+        try (Connection con = new CPConnection().getConnection()) {
+            PreparedStatement ps = con.prepareStatement("select * from rougga_users where id=?;");
             ps.setString(1, id.toString());
             ResultSet r = ps.executeQuery();
             if (r.next()) {
@@ -66,9 +62,9 @@ public class UtilisateurController {
                         CfgHandler.getFormatedDateAsDate(r.getString("date")),
                         r.getString("sponsor"));
             }
-            con.closeConnection();
+            con.close();
             return u;
-        } catch (ClassNotFoundException | SQLException e) {
+        } catch (Exception e) {
             logger.error(e.getMessage());
             return null;
         }
@@ -76,26 +72,24 @@ public class UtilisateurController {
 
     public Utilisateur getUtilisateurByUsername(String username) {
         Utilisateur u = null;
-        try {
-            PgConnection con = new PgConnection();
-            PreparedStatement ps = con.getStatement().getConnection().prepareStatement("select id from rougga_users where username=?;");
+        try (Connection con = new CPConnection().getConnection()) {
+            PreparedStatement ps = con.prepareStatement("select id from rougga_users where username=?;");
             ps.setString(1, username);
             ResultSet r = ps.executeQuery();
             if (r.next()) {
                 u = getUtilisateurById(UUID.fromString(r.getString("id")));
             }
-            con.closeConnection();
+            con.close();
             return u;
-        } catch (ClassNotFoundException | SQLException e) {
+        } catch (Exception e) {
             logger.error(e.getMessage());
             return null;
         }
     }
 
     public boolean AddUtilisateur(Utilisateur u) {
-        try {
-            PgConnection con = new PgConnection();
-            PreparedStatement p = con.getStatement().getConnection().prepareStatement("insert into rougga_users (id,username,password,grade,first_name,last_name,sponsor,date) values(?,?,?,?,?,?,?,?);");
+        try (Connection con = new CPConnection().getConnection()) {
+            PreparedStatement p = con.prepareStatement("insert into rougga_users (id,username,password,grade,first_name,last_name,sponsor,date) values(?,?,?,?,?,?,?,?);");
             p.setString(1, u.getId().toString());
             p.setString(2, u.getUsername());
             p.setString(3, u.getPassword());
@@ -103,9 +97,9 @@ public class UtilisateurController {
             p.setString(5, u.getFirstName());
             p.setString(6, u.getLastName());
             p.setString(7, u.getSponsor());
-            p.setDate(8, new java.sql.Date(u.getDate().getTime()));
+            p.setString(8, CfgHandler.getFormatedDateAsString(u.getDate()));
             p.execute();
-            con.closeConnection();
+            con.close();
             return true;
 
         } catch (Exception e) {
@@ -115,15 +109,14 @@ public class UtilisateurController {
     }
 
     public boolean deleteUtilisateurById(UUID id) {
-        try {
-            PgConnection con = new PgConnection();
-            PreparedStatement p = con.getStatement().getConnection().prepareStatement("delete from rougga_users where id=?;");
+        try (Connection con = new CPConnection().getConnection()) {
+            PreparedStatement p = con.prepareStatement("delete from rougga_users where id=?;");
             p.setString(1, id.toString());
             p.execute();
-            con.closeConnection();
+            con.close();
             return true;
 
-        } catch (ClassNotFoundException | SQLException e) {
+        } catch (Exception e) {
             logger.error(e.getMessage());
             return false;
         }
@@ -131,8 +124,7 @@ public class UtilisateurController {
 
     public String getBranchName() {
         String BRANCH_NAME = "BORNE";
-        try {
-            Connection con = new CPConnection().getConnection();
+        try (Connection con = new CPConnection().getConnection()) {
             ResultSet r = con.createStatement().executeQuery("SELECT value FROM t_basic_par where name='BRANCH_NAME';");
             if (r.next()) {
                 BRANCH_NAME = r.getString("value");

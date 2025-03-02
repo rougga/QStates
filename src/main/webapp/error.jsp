@@ -7,7 +7,6 @@
 <%@page import="ma.rougga.qstates.CfgHandler"%>
 <%@page import="java.sql.SQLException"%>
 <%@page import="java.sql.ResultSet"%>
-<%@page import="ma.rougga.qstates.PgConnection"%>
 <%@page import="java.sql.Connection"%>
 <%@page contentType="text/html" pageEncoding="UTF-8"%>
 <!DOCTYPE html>

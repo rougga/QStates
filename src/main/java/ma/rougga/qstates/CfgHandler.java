@@ -2,13 +2,11 @@ package ma.rougga.qstates;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.Objects;
 import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -17,16 +15,13 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
 public class CfgHandler {
 
     //MetaData
     public static final String APP = "QStates";
-    public static final String VERSION = "6.0";
+    public static final String VERSION = "6.1";
     public static final String COMPANY = "ROUGGA";
     public static final String CLIENT = "NST";
     //Data files

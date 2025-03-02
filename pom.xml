@@ -4,7 +4,7 @@
 
     <groupId>ma.rougga</groupId>
     <artifactId>QStates</artifactId>
-    <version>6.0</version>
+    <version>6.1</version>
     <packaging>war</packaging>
 
     <name>QStates</name>
