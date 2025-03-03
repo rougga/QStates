@@ -14,8 +14,8 @@ public class CPConnection {
     private static final Logger logger = LoggerFactory.getLogger(CPConnection.class);
     private static HikariDataSource dataSource;
     private static final String DRIVER = "org.postgresql.Driver";
-    private static final String CONNECTIONSTRING = "jdbc:postgresql://localhost:5433/postgres?characterEncoding=UTF-8";
-    //  private static final String CONNECTIONSTRING = "jdbc:postgresql://localhost:5432/postgres?characterEncoding=UTF-8";
+   // private static final String CONNECTIONSTRING = "jdbc:postgresql://localhost:5433/postgres?characterEncoding=UTF-8";
+      private static final String CONNECTIONSTRING = "jdbc:postgresql://localhost:5432/postgres?characterEncoding=UTF-8";
     private static final String USER = "honyi";
     private static final String PASSWORD = "honyi123";
     

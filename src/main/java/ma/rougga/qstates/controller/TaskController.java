@@ -18,7 +18,7 @@ public class TaskController {
 
     public ArrayList<Task> getTasks() {
         ArrayList<Task> taches = new ArrayList<>();
-        String SQL = "SELECT id,name,id_service FROM rougga_tasks order by id_service;";
+        String SQL = "SELECT id,name,id_service FROM rougga_task order by id_service;";
         try (Connection con = new CPConnection().getConnection()) {
             ResultSet r = con.createStatement().executeQuery(SQL);
             while (r.next()) {
@@ -41,7 +41,7 @@ public class TaskController {
 
     public boolean add(Task task) {
         try (Connection con = new CPConnection().getConnection()) {
-            String SQL = "INSERT INTO rougga_tasks values (?,?,?);";
+            String SQL = "INSERT INTO rougga_task values (?,?,?);";
             PreparedStatement ps = con.prepareStatement(SQL);
             ps.setString(1, task.getId().toString());
             ps.setString(2, task.getName());
@@ -57,7 +57,7 @@ public class TaskController {
 
     public boolean deleteById(UUID id) {
         try (Connection con = new CPConnection().getConnection()) {
-            String SQL = "DELETE from rougga_tasks where id=?";
+            String SQL = "DELETE from rougga_task where id=?";
             PreparedStatement ps = con.prepareStatement(SQL);
             ps.setString(1, id.toString());
             boolean result = ps.execute();
@@ -72,7 +72,7 @@ public class TaskController {
     public ArrayList<Task> getTasksByService(String id_service) {
         ArrayList<Task> taches = new ArrayList<>();
         try (Connection con = new CPConnection().getConnection()) {
-            String SQL = "SELECT * from rougga_tasks where id_service=?";
+            String SQL = "SELECT * from rougga_task where id_service=?";
             PreparedStatement ps = con.prepareStatement(SQL);
             ps.setString(1, id_service);
             ResultSet rs = ps.executeQuery();
